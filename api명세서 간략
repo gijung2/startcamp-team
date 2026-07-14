@@ -1,275 +1,122 @@
-# LocalHub API 명세서 요약
+# LocalHub API 명세서 — 100줄 요약
 
-## 1. 기본 설정
-
+## 1. 기본 구조
 ```text
-프론트엔드: http://localhost:5500
+Vue 화면 → FastAPI REST API → SQLite
+프론트: http://localhost:5500
 백엔드: http://localhost:8000
 API 기본 경로: /api
-데이터 형식: JSON
 ```
 
-프론트 설정:
+## 2. 서울 데이터
+- 실제 ZIP 데이터: 관광지 783, 레포츠 126, 문화시설 566, 쇼핑 4,368건
+- 숙박 423, 여행코스 51, 축제공연행사 201건, 총 6,518건
+- 음식점은 SOURCE 문서에는 있지만 실제 서울 ZIP에는 없음
+- 출처: 한국관광공사 TourAPI 4.0, 공공누리 제3유형
 
-```js
-window.LOCALHUB_CONFIG = {
-  API_BASE_URL: 'http://localhost:8000',
-  USE_MOCK_API: false,
-  KAKAO_MAP_KEY: '카카오_JavaScript_키',
-}
-```
+## 3. 원본 데이터 매핑
+| 원본 | API 응답 |
+|---|---|
+| `contentid` | `id` |
+| `title` | `name` |
+| `contenttypeid` | `category` |
+| `addr1 + addr2` | `address` |
+| `mapy` | `lat` |
+| `mapx` | `lng` |
+| `firstimage` | `image` |
 
-백엔드는 CORS에서 `http://localhost:5500`을 허용해야 한다.
+- `mapx`, `mapy`는 문자열에서 숫자로 변환
+- 전화번호와 설명은 사용하지 않음
+- 이미지가 없으면 빈 문자열, 주소가 없으면 `주소 정보 없음` 표시
 
-## 2. API 목록
-
-| 기능 | Method | 경로 |
-|---|---:|---|
-| 지역정보 조회 | GET | `/api/locations` |
-| 게시글 목록·검색 | GET | `/api/posts` |
-| 게시글 상세 | GET | `/api/posts/{id}` |
-| 게시글 등록 | POST | `/api/posts` |
-| 게시글 수정 | PUT | `/api/posts/{id}` |
-| 게시글 삭제 | DELETE | `/api/posts/{id}` |
-| 댓글 등록 | POST | `/api/posts/{id}/comments` |
-| 댓글 삭제 | DELETE | `/api/posts/{id}/comments/{commentId}` |
-| 챗봇 | POST | `/api/chat` |
-
-## 3. 지역정보
-
-```http
-GET /api/locations
-```
-
-응답:
-
-```json
-{
-  "items": [
-    {
-      "id": 1,
-      "name": "세종문화회관",
-      "type": "culture",
-      "lat": 37.5724,
-      "lng": 126.9757,
-      "address": "서울 종로구 세종대로 175",
-      "desc": "문화예술 공간입니다.",
-      "image": "https://example.com/image.jpg"
-    }
-  ]
-}
-```
-
-`type` 허용값:
-
+## 4. 지역 카테고리
 ```text
-tourist, sports, culture, shopping, stay, course, festival
+12 tourist 관광지 / 14 culture 문화시설 / 15 festival 축제공연행사
+25 course 여행코스 / 28 sports 레포츠 / 32 stay 숙박 / 38 shopping 쇼핑
 ```
 
-전화번호는 필요 없다. 지역정보 페이지 처리는 프론트에서 20개씩 수행한다.
-
-## 4. 게시판
-
-### 목록·검색
-
-```http
-GET /api/posts?search=한강&category=관광지&page=1&size=10
-```
-
-- 검색 대상: 제목과 내용만
-- 조회수: 사용하지 않음
-- 정렬: 최신순
-- `category=all`이면 전체 카테고리
-
-응답:
-
+## 5. 화면별 API
+| 기능 | API |
+|---|---|
+| 지역정보 둘러보기 | `GET /api/locations?page=1&size=20` |
+| 지역 카테고리 | `GET /api/locations?category=tourist&page=1&size=20` |
+| 장소·주소 검색 | `GET /api/locations?search=한강&page=1&size=20` |
+| 지도 마커 | `GET /api/locations/map?category=tourist` |
+| 커뮤니티 목록 | `GET /api/posts?page=1&size=10` |
+| 최근 게시글 | `GET /api/posts?page=1&size=5` |
+| 게시글 검색 | `GET /api/posts?search=한강&page=1&size=10` |
+| 게시글 상세 | `GET /api/posts/{id}` |
+| 게시글 작성 | `POST /api/posts` |
+| 게시글 수정 | `PUT /api/posts/{id}` |
+| 게시글 삭제 | `DELETE /api/posts/{id}` |
+| 댓글 작성 | `POST /api/posts/{id}/comments` |
+| 댓글 삭제 | `DELETE /api/posts/{id}/comments/{commentId}` |
+| 챗봇 | `POST /api/chat` |
+## 6. 지역정보 응답
 ```json
-{
-  "items": [
-    {
-      "id": 1,
-      "category": "관광지",
-      "title": "한강공원 후기",
-      "author": "익명",
-      "content": "야경이 좋았습니다.",
-      "date": "2026-07-15"
-    }
-  ],
-  "total": 1
-}
+{"items":[{"id":"1059877","name":"양화한강공원","category":"tourist","categoryName":"관광지","address":"서울특별시 영등포구 노들로 221","lat":37.5385,"lng":126.8971,"image":"https://..."}],"total":783,"page":1,"size":20,"totalPages":40}
 ```
+- 검색 대상: 장소명, 주소, 상세 주소
+- 데이터가 많으므로 서버에서 카테고리·검색·페이지네이션 처리
+- 쇼핑 지도 마커는 최대 개수 제한 또는 클러스터 사용 권장
 
-### 상세 조회
-
-```http
-GET /api/posts/1
-```
-
+## 7. 게시글 목록 응답
 ```json
-{
-  "id": 1,
-  "category": "관광지",
-  "title": "한강공원 후기",
-  "author": "익명",
-  "content": "야경이 좋았습니다.",
-  "date": "2026-07-15",
-  "comments": []
-}
+{"items":[{"id":10,"category":"관광지","title":"한강공원 후기","author":"익명","content":"야경이 좋았습니다.","date":"2026-07-15"}],"total":1,"page":1,"size":10,"totalPages":1}
 ```
+- 최신순 정렬
+- 검색 대상은 제목과 내용만
+- 조회수는 사용하지 않음
 
-### 등록
-
-```http
-POST /api/posts
-```
-
+## 8. 게시글 요청
 ```json
-{
-  "category": "관광지",
-  "title": "한강공원 후기",
-  "author": "익명",
-  "content": "야경이 좋았습니다.",
-  "password": "1234"
-}
+{"category":"관광지","title":"한강공원 후기","author":"익명","content":"야경이 좋았습니다.","password":"1234"}
 ```
+- 작성과 수정 요청에서 사용
+- 삭제 요청: `{"password":"1234"}`
+- 과제 명세에 따라 비밀번호는 DB에 평문 저장·비교
+- 비밀번호는 API 응답에 포함하지 않음
 
-성공 응답은 생성된 게시글과 `id`를 반환한다.
-
-### 수정
-
-```http
-PUT /api/posts/1
-```
-
+## 9. 게시글 상세 응답
 ```json
-{
-  "category": "관광지",
-  "title": "수정된 제목",
-  "author": "익명",
-  "content": "수정된 내용",
-  "password": "1234"
-}
+{"id":10,"category":"관광지","title":"한강공원 후기","author":"익명","content":"야경이 좋았습니다.","date":"2026-07-15","comments":[]}
 ```
-
-### 삭제
-
-```http
-DELETE /api/posts/1
-```
-
+## 10. 댓글과 챗봇
+- 댓글 작성: `{"author":"익명","content":"정보 감사합니다.","password":"1234"}`
+- 댓글 삭제: `{"password":"1234"}`
+- 챗봇 요청: `{"message":"한강 관광지를 추천해줘","history":[]}`
+- 챗봇 응답: `{"message":"양화한강공원을 추천합니다."}`
+## 11. 공통 오류
 ```json
-{
-  "password": "1234"
-}
+{"detail":"비밀번호가 일치하지 않습니다."}
 ```
+- 200 조회·수정, 201 작성, 204 삭제
+- 403 비밀번호 불일치, 404 데이터 없음, 422 입력 오류, 500 서버 오류
+## 12. 연결 순서
+1. 백엔드가 서울 JSON을 SQLite에 적재
+2. 지역정보 목록·카테고리·검색 API 연결
+3. 게시판 CRUD와 댓글 API 연결
+4. 데이터 기반 챗봇 연결
+5. 프론트 API 설정 후 Netlify·Render 배포 및 CORS 확인
 
-성공 시 `204 No Content`를 반환한다.
+내 프론트는 API 연결 준비가 되어 있어. 다음 부분을 맞춰주면 돼.
 
-## 5. 댓글
-
-### 등록
-
-```http
-POST /api/posts/1/comments
-```
-
-```json
-{
-  "author": "익명",
-  "content": "정보 감사합니다.",
-  "password": "1234"
-}
-```
-
-응답:
-
-```json
-{
-  "id": 1,
-  "author": "익명",
-  "content": "정보 감사합니다.",
-  "date": "2026-07-15"
-}
-```
-
-### 삭제
-
-```http
-DELETE /api/posts/1/comments/1
-```
-
-```json
-{
-  "password": "1234"
-}
-```
-
-## 6. 챗봇
-
-```http
-POST /api/chat
-```
-
-요청:
-
-```json
-{
-  "message": "종로구 관광지를 추천해줘",
-  "history": []
-}
-```
-
-응답:
-
-```json
-{
-  "message": "종로구에서는 경복궁을 추천합니다."
-}
-```
-
-GPT API 키는 백엔드 환경변수에만 저장한다.
-
-## 7. 오류 형식
-
-모든 오류는 다음 형식으로 통일한다.
-
-```json
-{
-  "detail": "비밀번호가 일치하지 않습니다."
-}
-```
-
-주요 상태 코드:
-
-- `200`: 조회·수정 성공
-- `201`: 등록 성공
-- `204`: 삭제 성공
-- `403`: 비밀번호 불일치
-- `404`: 게시글·댓글 없음
-- `422`: 입력값 오류
-- `500`: 서버 또는 DB 오류
-
-## 8. DB 필수 테이블
-
-```text
-locations
-- id, name, type, latitude, longitude, address, description, image_url
-
-posts
-- id, category, title, author, content, password_hash, created_at, updated_at
-
-comments
-- id, post_id, author, content, password_hash, created_at
-```
-
-- 비밀번호는 평문이 아닌 해시로 저장한다.
-- 게시글 삭제 시 연결된 댓글도 삭제한다.
-- DB 접속 정보는 프론트에 넣지 않는다.
-
-## 9. 연동 순서
-
-1. 백엔드에서 위 API를 구현한다.
-2. CORS에 `http://localhost:5500`을 허용한다.
-3. 프론트 `API_BASE_URL`을 `http://localhost:8000`으로 설정한다.
-4. `USE_MOCK_API`를 `false`로 변경한다.
-5. 지역정보 → 게시판 CRUD → 댓글 → 챗봇 순서로 테스트한다.
+1. 서울 JSON 7개를 SQLite에 초기 데이터로 넣어줘.
+2. 지역정보는 `/api/locations`에서 카테고리, 검색어, 페이지를 받을 수 있어야 해.
+   - 예: `/api/locations?category=tourist&search=한강&page=1&size=20`
+3. 지역정보 응답은 `items`, `total`, `page`, `size`, `totalPages` 형식으로 부탁해.
+4. 장소 데이터는 `id`, `name`, `category`, `address`, `lat`, `lng`, `image` 필드로 보내줘.
+5. 지도에서 쓸 카테고리별 좌표 API도 필요해. `/api/locations/map?category=tourist` 형태면 좋을 것 같아.
+6. 게시판은 목록·상세·작성·수정·삭제 API가 필요해.
+   - `GET/POST /api/posts`
+   - `GET/PUT/DELETE /api/posts/{id}`
+7. 댓글 등록·삭제 API도 필요해.
+   - `POST /api/posts/{id}/comments`
+   - `DELETE /api/posts/{id}/comments/{commentId}`
+8. 게시글 검색은 제목과 내용만 검색해줘. 조회수는 필요 없어.
+9. 과제 명세대로 게시글과 댓글 비밀번호는 평문으로 저장하고 수정·삭제할 때 비교해줘.
+10. 챗봇은 `POST /api/chat`으로 만들고, `message`와 `history`를 받아서 `{"message":"답변"}` 형태로 보내줘.
+11. 오류는 `{"detail":"오류 메시지"}` 형식으로 통일해줘.
+12. CORS에 프론트 주소 `http://localhost:5500`과 나중에 Netlify 주소를 허용해줘.
+13. 백엔드 실행 주소와 포트를 알려줘. 우선 `http://localhost:8000`으로 생각하고 있어.
+14. API가 하나씩 완성될 때마다 알려주면 내가 프론트 화면에 바로 연결하고 테스트할게.
