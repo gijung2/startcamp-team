@@ -1,0 +1,1659 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LocalHub - 공공데이터 기반 지역 정보 공유 커뮤니티</title>
+    
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        beige: {
+                            50: '#fdfcf7',
+                            100: '#fbf9f0',
+                            200: '#f5eee2',
+                            300: '#eaddcb',
+                            400: '#d0bfa7',
+                            800: '#5c5243',
+                            900: '#2d261b',
+                        },
+                        accent: {
+                            terracotta: '#91573d',
+                            terracottaHover: '#7a4730',
+                            clay: '#a66e53',
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['Pretendard', 'Inter', 'sans-serif'],
+                        serif: ['Noto Serif KR', 'ChosunCentennial', 'Georgia', 'serif'],
+                    }
+                }
+            }
+        }
+    </script>
+    
+    <!-- Premium Fonts Link -->
+    <link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard-dynamic-subset.css" />
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@300;400;700;900&display=swap" rel="stylesheet">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700&family=Noto+Sans+KR:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- FontAwesome Icons --> 
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Vue 3 Global Build -->
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    
+    <!-- Kakao Maps SDK is loaded dynamically after a JavaScript key is configured. -->
+    
+    <!-- Chart.js for Beautiful Analytics -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <style>
+        body {
+            font-family: "Pretendard", -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+            background: radial-gradient(circle at 50% 0%, #fdfcf7 0%, #f5eee2 100%);
+            color: #2d261b;
+            min-h: 100vh;
+        }
+
+        .premium-card {
+            background: rgba(255, 255, 255, 0.75);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.8);
+            box-shadow: 0 10px 30px -5px rgba(145, 87, 61, 0.05), 0 1px 3px rgba(145, 87, 61, 0.02);
+        }
+
+        .category-btn {
+            background: #ffffff;
+            border: 1px solid rgba(234, 221, 203, 0.6);
+            color: #5c5243;
+            transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 0 2px 8px -1px rgba(92, 82, 67, 0.04);
+        }
+
+        .category-btn:hover, .category-btn.active {
+            background: #ffffff;
+            border-color: #91573d;
+            color: #91573d;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px -2px rgba(145, 87, 61, 0.12);
+        }
+
+        .map-view-panel {
+            background: transparent;
+        }
+
+        .map-category-pill {
+            min-height: 34px;
+            padding: 0.5rem 1rem;
+            border-radius: 9999px;
+            border: 1px solid #eaddcb;
+            background: rgba(255, 255, 255, 0.82);
+            color: #5c5243;
+            font-size: 13px;
+            font-weight: 700;
+            transition: all 0.2s ease;
+            box-shadow: 0 2px 8px -2px rgba(92, 82, 67, 0.08);
+        }
+
+        .map-category-pill:hover {
+            border-color: #91573d;
+            color: #91573d;
+            background: #ffffff;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px -3px rgba(145, 87, 61, 0.16);
+        }
+
+        .map-category-pill.active {
+            border-color: #91573d;
+            background: #91573d;
+            color: #ffffff;
+            box-shadow: 0 6px 16px rgba(145, 87, 61, 0.24);
+        }
+
+        #map-container {
+            width: 100%;
+            height: 560px;
+            z-index: 10;
+            background: #f5eee2;
+        }
+
+        .kakao-map-info {
+            min-width: 220px;
+            max-width: 280px;
+            padding: 14px 16px;
+            font-family: "Pretendard", sans-serif;
+            color: #2d261b;
+        }
+
+        .kakao-map-info__category {
+            display: inline-flex;
+            align-items: center;
+            padding: 3px 8px;
+            margin-bottom: 8px;
+            border-radius: 9999px;
+            background: rgba(145, 87, 61, 0.10);
+            color: #91573d;
+            font-size: 10px;
+            font-weight: 800;
+        }
+
+        .kakao-map-info__title {
+            margin: 0 0 6px;
+            color: #2d261b;
+            font-size: 14px;
+            font-weight: 800;
+            line-height: 1.35;
+        }
+
+        .kakao-map-info__description {
+            margin: 0;
+            color: #5c5243;
+            font-size: 11px;
+            line-height: 1.55;
+        }
+
+        .map-setup-notice {
+            position: absolute;
+            inset: 0;
+            z-index: 20;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 24px;
+            background: linear-gradient(135deg, rgba(253, 252, 247, 0.96) 0%, rgba(245, 238, 226, 0.96) 100%);
+            text-align: center;
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #eaddcb;
+            border-radius: 99px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #d0bfa7;
+        }
+
+
+        /* Reference-inspired English navigation */
+
+        /* Portfolio navigation style adapted to LocalHub */
+        .top-nav {
+            display: flex;
+            align-items: center;
+            gap: 0.25rem;
+            overflow-x: auto;
+            padding: 0.25rem 0;
+            white-space: nowrap;
+            scrollbar-width: none;
+            font-family: "Plus Jakarta Sans", "Noto Sans KR", "Pretendard", sans-serif;
+            font-size: 0.875rem;
+            font-weight: 600;
+        }
+
+        .top-nav::-webkit-scrollbar {
+            display: none;
+        }
+
+        .top-nav-link {
+            position: relative;
+            flex: 0 0 auto;
+            min-width: max-content;
+            padding: 0.5rem 0.625rem;
+            border: 0;
+            border-bottom: 2px solid transparent;
+            border-radius: 0.5rem;
+            background: transparent;
+            color: rgba(92, 82, 67, 0.55);
+            font: inherit;
+            line-height: 1.25;
+            letter-spacing: -0.01em;
+            white-space: nowrap;
+            transition:
+                color 300ms ease,
+                border-color 300ms ease,
+                background-color 300ms ease,
+                transform 200ms ease;
+        }
+
+        .top-nav-link:hover {
+            color: #2d261b;
+            background: rgba(245, 238, 226, 0.52);
+        }
+
+        .top-nav-link.is-active {
+            color: #91573d;
+            border-bottom-color: #91573d;
+            background: rgba(255, 255, 255, 0.18);
+            font-weight: 600;
+        }
+
+        .top-nav-link:active {
+            transform: scale(0.97);
+        }
+
+        .top-nav-link:focus-visible {
+            outline: 2px solid rgba(145, 87, 61, 0.28);
+            outline-offset: 3px;
+        }
+
+        @media (min-width: 640px) {
+            .top-nav {
+                gap: 1rem;
+                font-size: 0.9375rem;
+            }
+        }
+
+        @media (min-width: 768px) {
+            .top-nav {
+                gap: 1.5rem;
+                font-size: 1rem;
+            }
+
+            .top-nav-link {
+                padding: 0.5rem 0.625rem;
+            }
+        }
+
+    </style>
+</head>
+<body class="antialiased selection:bg-accent-terracotta/20 selection:text-accent-terracotta">
+
+    <div id="app" class="relative min-h-screen flex flex-col justify-between">
+        
+        <!-- Header Section -->
+        <header class="w-full z-40 sticky top-0 bg-[#FAF7F0]/95 backdrop-blur-md border-b border-[#EFE6D5] transition-all duration-300 shadow-sm">
+            <div class="max-w-6xl mx-auto px-4 sm:px-6 min-h-[76px] flex items-center justify-between gap-4">
+                
+                <!-- Logo & Selected Area (Exact layout from image_7a7c03.png) -->
+                <div class="flex items-center space-x-3.5 cursor-pointer" @click="changeTab('home')">
+                    <div class="flex items-center space-x-2">
+                        <span class="text-xl text-accent-terracotta"><i class="fa-solid fa-location-pin"></i></span>
+                        <span class="text-xl font-bold tracking-tight text-beige-900 font-sans">LocalHub</span>
+                    </div>
+                    <div class="flex items-center space-x-1 bg-beige-200/80 px-3 py-1 rounded-full border border-beige-300 text-xs text-beige-800 font-medium">
+                        <span>Seoul</span>
+                    </div>
+                </div>
+
+                <!-- Navigation Tabs (Exact header buttons from image_7a7c03.png) -->
+                <nav class="top-nav" aria-label="Primary navigation">
+                    <button v-for="tab in tabs" :key="tab.id"
+                            @click="changeTab(tab.id)"
+                            :aria-pressed="activeTab === tab.id"
+                            :class="['top-nav-link', { 'is-active': activeTab === tab.id }]">
+                        {{ tab.name }}
+                    </button>
+                </nav>
+            </div>
+        </header>
+
+        <!-- Main Content Viewport -->
+        <main class="flex-grow max-w-6xl w-full mx-auto px-6 py-10">
+
+            <!-- ============================================== -->
+            <!-- 1. HOME TAB PANEL (Direct Match to image_7a7c03.png) -->
+            <!-- ============================================== -->
+            <section v-if="activeTab === 'home'" class="space-y-12">
+                
+                <!-- Hero Display Card (Exact copy from screenshot) -->
+                <div class="rounded-3xl border border-beige-300/40 bg-white/70 backdrop-blur-xl p-10 md:p-16 text-center shadow-lg relative overflow-hidden flex flex-col items-center justify-center space-y-6">
+                    <div class="absolute -right-24 -top-24 w-80 h-80 bg-accent-terracotta/5 rounded-full blur-3xl pointer-events-none"></div>
+                    <div class="absolute -left-24 -bottom-24 w-80 h-80 bg-beige-400/10 rounded-full blur-3xl pointer-events-none"></div>
+                    
+                    <h1 class="text-3xl md:text-5xl font-black text-beige-900 leading-tight tracking-tight font-serif max-w-4xl mx-auto">
+                        {{ currentRegion }}의 모든 지역정보를<br class="sm:hidden"/> 한 곳에서 📍
+                    </h1>
+                    
+                    <p class="text-beige-800/80 text-sm md:text-[15px] font-normal tracking-wide">
+                        한국관광공사 공공데이터 기반 · 익명 커뮤니티 · AI 지역정보 챗봇
+                    </p>
+                    
+                    <div class="flex flex-col sm:flex-row items-center justify-center gap-3 pt-3">
+                        <button @click="changeTab('info')" class="w-full sm:w-auto px-6 py-3.5 rounded-xl bg-accent-terracotta text-white font-semibold text-sm hover:bg-accent-terracottaHover shadow-md transition-all">
+                            지역정보 둘러보기
+                        </button>
+                        <button @click="changeTab('board')" class="w-full sm:w-auto px-6 py-3.5 rounded-xl bg-white border border-beige-300 text-beige-800 font-semibold text-sm hover:bg-beige-50 transition-all">
+                            커뮤니티 가기
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Categories Section (Exact copy from screenshot) -->
+                <div class="space-y-5">
+                    <h2 class="text-2xl font-bold tracking-tight text-beige-900 font-serif">카테고리</h2>
+                    
+                    <div class="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-3">
+                        <button v-for="cat in categories" :key="cat.id"
+                                @click="filterByCategory(cat.id)"
+                                class="category-btn px-4 py-4 rounded-xl text-center flex flex-col items-center justify-center gap-2">
+                            <span class="text-lg" :class="activeCategory === cat.id ? 'text-accent-terracotta' : 'text-beige-400'">
+                                <i :class="cat.icon"></i>
+                            </span>
+                            <span class="text-sm md:text-[15px] font-semibold leading-tight whitespace-nowrap">{{ cat.name }}</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Recent Posts Section (Exact copy from screenshot) -->
+                <div class="space-y-5">
+                    <div class="flex items-center justify-between">
+                        <h2 class="text-2xl font-bold tracking-tight text-beige-900 font-serif">최근 게시글</h2>
+                        <button @click="changeTab('board')" class="text-xs text-accent-terracotta hover:underline font-medium">전체보기 <i class="fa-solid fa-chevron-right text-[9px] ml-1"></i></button>
+                    </div>
+
+                    <div class="space-y-3.5">
+                        <div v-for="post in samplePosts" :key="post.id"
+                             @click="viewRecentPost(post)"
+                             class="flex items-center justify-between p-5 rounded-2xl bg-white/70 border border-beige-300/30 hover:border-accent-terracotta/40 hover:bg-white transition-all duration-200 cursor-pointer shadow-sm group">
+                            <div class="flex items-center space-x-4 min-w-0 flex-grow pr-4">
+                                <span class="text-[11px] font-bold px-2.5 py-1 rounded-md bg-beige-200/80 text-beige-800 shrink-0">
+                                    {{ post.category }}
+                                </span>
+                                <h3 class="text-[14px] font-bold text-beige-900 truncate group-hover:text-accent-terracotta transition-colors">
+                                    {{ post.title }}
+                                </h3>
+                            </div>
+                            <div class="flex items-center space-x-4 shrink-0 text-xs text-beige-800/70 font-mono">
+                                <span>{{ post.author }}</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </section>
+
+            <!-- ============================================== -->
+            <!-- 2. REGION DIRECTORY TAB PANEL (지역정보)        -->
+            <!-- ============================================== -->
+            <section v-if="activeTab === 'info'" class="space-y-5 py-2 pb-10">
+                <!-- Page heading -->
+                <div class="space-y-2">
+                    <h2 class="text-[26px] md:text-[30px] font-black tracking-tight text-beige-900 font-serif">지역정보</h2>
+                    <p class="text-sm text-beige-800/75">
+                        카테고리별 {{ currentRegion }} 관광 정보를 확인하세요.
+                        <span class="ml-1 text-accent-terracotta font-semibold">· 표시 {{ filteredInfoItems.length }}개</span>
+                    </p>
+                </div>
+
+                <!-- Category pills -->
+                <div class="flex flex-wrap items-center gap-2">
+                    <button @click="setInfoCategory('all')"
+                            :class="activeInfoCategory === 'all' ? 'bg-accent-terracotta text-white border-accent-terracotta shadow-md' : 'bg-white/90 text-beige-800 border-beige-300 hover:border-accent-terracotta hover:text-accent-terracotta'"
+                            class="min-h-[34px] px-4 rounded-full border text-[13px] font-bold transition-all whitespace-nowrap">
+                        전체
+                    </button>
+                    <button v-for="cat in categories" :key="cat.id"
+                            @click="setInfoCategory(cat.id)"
+                            :class="activeInfoCategory === cat.id ? 'bg-accent-terracotta text-white border-accent-terracotta shadow-md' : 'bg-white/90 text-beige-800 border-beige-300 hover:border-accent-terracotta hover:text-accent-terracotta'"
+                            class="min-h-[34px] px-4 rounded-full border text-[13px] font-bold transition-all whitespace-nowrap">
+                        {{ cat.name }}
+                    </button>
+                </div>
+
+                <!-- Search controls -->
+                <div class="flex items-stretch gap-2 w-full sm:max-w-md">
+                    <div class="relative flex-grow min-w-0">
+                        <span class="absolute inset-y-0 left-0 flex items-center pl-3.5 text-beige-400 pointer-events-none">
+                            <i class="fa-solid fa-magnifying-glass text-xs"></i>
+                        </span>
+                        <input type="text"
+                               v-model="infoSearch"
+                               @keyup.enter="applyInfoSearch"
+                               placeholder="장소명 · 주소 검색"
+                               class="w-full h-12 bg-white border border-beige-300 rounded-xl pl-10 pr-4 text-xs text-beige-900 placeholder:text-beige-400 focus:outline-none focus:border-accent-terracotta focus:ring-2 focus:ring-accent-terracotta/10 shadow-sm">
+                    </div>
+                    <button @click="applyInfoSearch"
+                            class="w-12 h-12 rounded-xl bg-accent-terracotta hover:bg-accent-terracottaHover text-white text-xs font-bold shadow-sm transition-all shrink-0 leading-tight">
+                        검색
+                    </button>
+                </div>
+
+                <!-- Image card grid -->
+                <div v-if="paginatedInfoItems.length > 0" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <article v-for="item in paginatedInfoItems"
+                             :key="item.id || `${item.type}-${item.name}`"
+                             @click="openInfoModal(item)"
+                             class="group overflow-hidden rounded-xl border border-beige-300/80 bg-white shadow-sm hover:-translate-y-1 hover:shadow-lg hover:border-accent-terracotta/40 transition-all duration-200 cursor-pointer">
+                        <div class="relative h-[150px] overflow-hidden bg-beige-200">
+                            <img :src="getLocationImage(item)"
+                                 :alt="`${item.name} 이미지`"
+                                 @error="handleLocationImageError"
+                                 class="w-full h-full object-cover group-hover:scale-[1.04] transition-transform duration-300">
+                            <span class="absolute top-2.5 left-2.5 inline-flex items-center min-h-[23px] px-2.5 rounded-full bg-white/95 border border-white/80 text-[10px] text-accent-terracotta font-extrabold shadow-sm whitespace-nowrap">
+                                {{ getCategoryName(item.type) }}
+                            </span>
+                        </div>
+
+                        <div class="p-4 space-y-2 min-h-[112px]">
+                            <h3 class="text-[14px] font-extrabold text-beige-900 leading-5 line-clamp-2 group-hover:text-accent-terracotta transition-colors">
+                                {{ item.name }}
+                            </h3>
+                            <p class="text-[11px] text-beige-800/70 leading-5 truncate">
+                                <i class="fa-solid fa-location-dot mr-1 text-accent-terracotta/70"></i>{{ item.address || '주소 정보 없음' }}
+                            </p>
+                        </div>
+                    </article>
+                </div>
+
+                <!-- Empty state -->
+                <div v-else class="py-20 rounded-2xl border border-dashed border-beige-300 bg-white/50 text-center">
+                    <i class="fa-regular fa-folder-open text-2xl text-beige-400"></i>
+                    <p class="mt-3 text-sm font-semibold text-beige-800">조건에 맞는 지역정보가 없습니다.</p>
+                    <p class="mt-1 text-xs text-beige-800/55">카테고리 또는 검색어를 다시 확인해 주세요.</p>
+                </div>
+
+                <!-- Pagination -->
+                <div v-if="filteredInfoItems.length > 0" class="flex items-center justify-center gap-4 pt-2">
+                    <button @click="goToInfoPage(infoCurrentPage - 1)"
+                            :disabled="infoCurrentPage <= 1"
+                            class="px-4 py-2 rounded-lg border border-beige-300 bg-white text-xs font-bold text-beige-800 hover:border-accent-terracotta hover:text-accent-terracotta disabled:opacity-40 disabled:cursor-not-allowed transition-all">
+                        이전
+                    </button>
+                    <span class="text-xs text-beige-800/60 font-mono">
+                        <strong class="text-accent-terracotta">{{ infoCurrentPage }}</strong> / {{ infoTotalPages }}
+                    </span>
+                    <button @click="goToInfoPage(infoCurrentPage + 1)"
+                            :disabled="infoCurrentPage >= infoTotalPages"
+                            class="px-4 py-2 rounded-lg border border-beige-300 bg-white text-xs font-bold text-beige-800 hover:border-accent-terracotta hover:text-accent-terracotta disabled:opacity-40 disabled:cursor-not-allowed transition-all">
+                        다음
+                    </button>
+                </div>
+
+
+                <!-- 지역정보 상세 모달 -->
+                <div v-if="selectedInfoItem"
+                     @click.self="closeInfoModal"
+                     @keydown.esc.window="closeInfoModal"
+                     class="fixed inset-0 z-[70] flex items-center justify-center bg-[#2d261b]/55 backdrop-blur-[2px] px-4 py-6">
+                    <div role="dialog"
+                         aria-modal="true"
+                         :aria-label="`${selectedInfoItem.name} 상세정보`"
+                         class="relative w-full max-w-[520px] overflow-hidden rounded-2xl border border-beige-300 bg-white shadow-2xl">
+                        <button @click="closeInfoModal"
+                                type="button"
+                                aria-label="상세 창 닫기"
+                                class="absolute right-3 top-3 z-10 flex h-8 w-8 items-center justify-center rounded-full border border-beige-300 bg-white/95 text-beige-800 shadow-sm transition hover:bg-beige-100 hover:text-accent-terracotta">
+                            <i class="fa-solid fa-xmark"></i>
+                        </button>
+
+                        <div class="p-4 pb-0 sm:p-5 sm:pb-0">
+                            <div class="h-[210px] overflow-hidden rounded-xl bg-beige-200 sm:h-[230px]">
+                                <img :src="getLocationImage(selectedInfoItem)"
+                                     :alt="`${selectedInfoItem.name} 이미지`"
+                                     @error="handleLocationImageError"
+                                     class="h-full w-full object-cover">
+                            </div>
+                        </div>
+
+                        <div class="space-y-4 p-5 sm:p-6">
+                            <span class="inline-flex min-h-[25px] items-center rounded-full bg-beige-100 px-3 text-[11px] font-extrabold text-accent-terracotta">
+                                {{ getCategoryName(selectedInfoItem.type) }}
+                            </span>
+
+                            <div class="space-y-3">
+                                <h3 class="text-xl font-black leading-snug text-beige-900 font-serif sm:text-2xl">
+                                    {{ selectedInfoItem.name }}
+                                </h3>
+                                <p class="text-sm leading-6 text-beige-800">
+                                    주소 · {{ selectedInfoItem.address || '주소 정보 없음' }}
+                                </p>
+                            </div>
+
+                            <button @click="openKakaoMap(selectedInfoItem)"
+                                    type="button"
+                                    class="inline-flex min-h-[42px] items-center justify-center gap-2 rounded-xl border border-beige-300 bg-white px-4 text-xs font-bold text-beige-900 shadow-sm transition hover:border-accent-terracotta hover:bg-beige-50 hover:text-accent-terracotta">
+                                <span class="text-sm">🗺️</span>
+                                <span>카카오맵에서 보기</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ============================================== -->
+            <!-- 3. MAP VIEW TAB PANEL (Kakao Maps)              -->
+            <!-- ============================================== -->
+            <section v-show="activeTab === 'map'" class="map-view-panel space-y-5 py-2 pb-10">
+                <div class="space-y-2">
+                    <h2 class="text-[26px] md:text-[30px] font-black tracking-tight text-beige-900 font-serif">지도</h2>
+                    <p class="text-[13px] md:text-sm text-beige-800/80">
+                        카테고리별 {{ currentRegion }} 관광 스팟을 지도에서 확인하세요 · 표시 {{ filteredMapLocations.length }}개
+                    </p>
+                </div>
+
+                <!-- Category filter pills -->
+                <div class="flex flex-wrap items-center gap-2 pb-1">
+                    <button v-for="cat in categories" :key="cat.id"
+                            @click="selectMapCategory(cat.id)"
+                            :class="['map-category-pill', mapCategory === cat.id ? 'active' : '']">
+                        {{ cat.name }}
+                    </button>
+                </div>
+
+                <!-- Full-width Kakao map -->
+                <div class="relative overflow-hidden rounded-2xl border border-beige-300/80 bg-white/80 shadow-md">
+                    <div id="map-container"></div>
+
+                    <div v-if="mapSetupRequired" class="map-setup-notice">
+                        <div class="max-w-md space-y-3">
+                            <div class="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-white text-accent-terracotta shadow-sm">
+                                <i class="fa-solid fa-map-location-dot text-xl"></i>
+                            </div>
+                            <h3 class="text-base font-extrabold text-beige-900 font-serif">Kakao Maps JavaScript 키를 설정해 주세요</h3>
+                            <p class="text-xs leading-relaxed text-beige-800/80">
+                                코드의 <code class="rounded bg-white px-1.5 py-0.5 text-accent-terracotta">KAKAO_MAP_APP_KEY</code>에
+                                카카오 개발자 콘솔에서 발급한 JavaScript 키를 입력하면 지도가 표시됩니다.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ============================================== -->
+            <!-- 4. COMMUNITY BOARD TAB PANEL (커뮤니티)          -->
+            <!-- ============================================== -->
+            <section v-if="activeTab === 'board'" class="space-y-6">
+                
+                <!-- Board Controls -->
+                <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                    <div>
+                        <h2 class="text-2xl font-bold text-beige-900 font-serif">지역 통합 소통방 (익명)</h2>
+                        <p class="text-xs text-beige-800">회원가입 없이, 작성 시 설정할 임의의 비밀번호만으로 간편하고 투명하게 소통해보세요.</p>
+                    </div>
+                    <button v-if="!isWriting && !currentPost" 
+                            @click="startWriting" 
+                            class="px-5 py-2.5 rounded-xl bg-accent-terracotta hover:bg-accent-terracottaHover text-white font-bold text-xs shadow-md transition-all flex items-center space-x-1.5">
+                        <i class="fa-solid fa-pen"></i>
+                        <span>새로운 글 작성</span>
+                    </button>
+                </div>
+
+                <!-- List View (Default) -->
+                <div v-if="!isWriting && !currentPost" class="space-y-4">
+                    
+                    <!-- Quick local Search -->
+                    <div class="flex flex-col md:flex-row gap-3 justify-between items-center bg-white/50 p-4 rounded-xl border border-beige-300/30">
+                        <!-- Category Filtering Pill buttons -->
+                        <div class="flex flex-wrap gap-1.5 w-full md:w-auto">
+                            <button @click="boardFilter = 'all'"
+                                    :class="boardFilter === 'all' ? 'bg-[#efe9da] text-accent-terracotta font-bold' : 'bg-white text-beige-800'"
+                                    class="px-3.5 py-1.5 rounded-lg border border-beige-300 text-[13px] font-medium transition-all whitespace-nowrap">
+                                전체 목록
+                            </button>
+                            <button v-for="cat in categories" :key="cat.id"
+                                    @click="boardFilter = cat.id"
+                                    :class="boardFilter === cat.id ? 'bg-[#efe9da] text-accent-terracotta font-bold' : 'bg-white text-beige-800'"
+                                    class="px-3.5 py-1.5 rounded-lg border border-beige-300 text-[13px] font-medium transition-all whitespace-nowrap">
+                                {{ cat.name }}
+                            </button>
+                        </div>
+                        
+                        <!-- Search field -->
+                        <div class="relative w-full md:max-w-xs">
+                            <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-beige-400">
+                                <i class="fa-solid fa-magnifying-glass text-xs"></i>
+                            </span>
+                            <input type="text" v-model="boardSearch" placeholder="커뮤니티 글 검색..." 
+                                   class="w-full bg-white border border-beige-300 rounded-lg pl-9 pr-4 py-2 text-xs text-beige-900 focus:outline-none focus:border-accent-terracotta">
+                        </div>
+                    </div>
+
+                    <!-- Custom Board Table -->
+                    <div class="overflow-x-auto rounded-2xl border border-beige-300 bg-white/70 shadow-sm">
+                        <table class="w-full text-left border-collapse min-w-[720px]">
+                            <thead>
+                                <tr class="border-b border-beige-300 bg-beige-200/50 text-beige-800 text-[11px] font-bold tracking-wider">
+                                    <th class="py-4 px-6 w-16">번호</th>
+                                    <th class="py-4 px-4 w-40 min-w-[10rem] whitespace-nowrap">구분</th>
+                                    <th class="py-4 px-6">제목</th>
+                                    <th class="py-4 px-6 w-32">익명작성자</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-beige-300/40 text-beige-900 text-xs">
+                                <tr v-for="(post, index) in paginatedBoardPosts" :key="post.id" 
+                                    @click="viewPost(post)"
+                                    class="hover:bg-beige-100/40 transition-all cursor-pointer group">
+                                    <td class="py-4 px-6 font-mono text-beige-800/80">{{ (boardCurrentPage - 1) * boardPageSize + index + 1 }}</td>
+                                    <td class="py-4 px-4 w-40 min-w-[10rem] whitespace-nowrap">
+                                        <span class="inline-flex items-center justify-center whitespace-nowrap px-2.5 py-1 rounded-md text-[10px] leading-none font-bold bg-beige-200 text-beige-800 border border-beige-300/50">
+                                            {{ post.category }}
+                                        </span>
+                                    </td>
+                                    <td class="py-4 px-6 font-bold group-hover:text-accent-terracotta transition-colors">
+                                        {{ post.title }}
+                                        <span v-if="post.comments && post.comments.length > 0" class="ml-1 text-[11px] text-accent-terracotta font-bold">[{{ post.comments.length }}]</span>
+                                    </td>
+                                    <td class="py-4 px-6 text-beige-800/80 font-medium">{{ post.author }}</td>
+                                </tr>
+                                <tr v-if="filteredBoardPosts.length === 0">
+                                    <td colspan="4" class="py-12 text-center text-beige-800/70">
+                                        조회된 익명 게시물이 없습니다.
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- Community Pagination: 한 페이지 최대 10개 -->
+                    <div v-if="filteredBoardPosts.length > 0" class="flex items-center justify-center gap-4 pt-2">
+                        <button @click="goToBoardPage(boardCurrentPage - 1)"
+                                :disabled="boardCurrentPage <= 1"
+                                class="px-4 py-2 rounded-lg border border-beige-300 bg-white text-xs font-bold text-beige-800 hover:border-accent-terracotta hover:text-accent-terracotta disabled:opacity-40 disabled:cursor-not-allowed transition-all">
+                            이전
+                        </button>
+                        <span class="text-xs text-beige-800/60 font-mono">
+                            <strong class="text-accent-terracotta">{{ boardCurrentPage }}</strong> / {{ boardTotalPages }}
+                        </span>
+                        <button @click="goToBoardPage(boardCurrentPage + 1)"
+                                :disabled="boardCurrentPage >= boardTotalPages"
+                                class="px-4 py-2 rounded-lg border border-beige-300 bg-white text-xs font-bold text-beige-800 hover:border-accent-terracotta hover:text-accent-terracotta disabled:opacity-40 disabled:cursor-not-allowed transition-all">
+                            다음
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Write / Edit Form Screen (Exact structure reference from Page 7) -->
+                <div v-if="isWriting" class="premium-card p-8 rounded-2xl border border-beige-300/80 space-y-6">
+                    <h3 class="text-xl font-bold text-beige-900 font-serif border-b border-beige-300/50 pb-4">
+                        {{ isEditing ? '게시글 수정' : '게시글 작성' }}
+                    </h3>
+                    
+                    <div class="space-y-4">
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-xs font-semibold text-beige-800 mb-1.5">카테고리</label>
+                                <select v-model="form.category" class="w-full bg-white border border-beige-300 rounded-xl px-4 py-2.5 text-xs text-beige-900 focus:outline-none focus:border-accent-terracotta shadow-sm">
+                                    <option v-for="cat in categories" :key="cat.id" :value="cat.name">{{ cat.name }}</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold text-beige-800 mb-1.5">익명 작성자</label>
+                                <input type="text" v-model="form.author" placeholder="닉네임 입력" class="w-full bg-white border border-beige-300 rounded-xl px-4 py-2.5 text-xs text-beige-900 placeholder:text-beige-400 focus:outline-none focus:border-accent-terracotta shadow-sm" />
+                            </div>
+                        </div>
+
+                        <div>
+                            <label class="block text-xs font-semibold text-beige-800 mb-1.5">제목</label>
+                            <input type="text" v-model="form.title" placeholder="제목을 입력해 주세요" class="w-full bg-white border border-beige-300 rounded-xl px-4 py-2.5 text-xs text-beige-900 placeholder:text-beige-400 focus:outline-none focus:border-accent-terracotta shadow-sm" />
+                        </div>
+
+                        <div>
+                            <label class="block text-xs font-semibold text-beige-800 mb-1.5">내용</label>
+                            <textarea v-model="form.content" rows="8" placeholder="상세한 지역 내용이나 의견을 기재해주세요." class="w-full bg-white border border-beige-300 rounded-xl px-4 py-3 text-xs text-beige-900 placeholder:text-beige-400 focus:outline-none focus:border-accent-terracotta shadow-sm resize-none"></textarea>
+                        </div>
+
+                        <div class="max-w-xs">
+                            <label class="block text-xs font-semibold text-beige-800 mb-1.5">수정용 비밀번호</label>
+                            <input type="password" v-model="form.password" placeholder="비밀번호 4자리" class="w-full bg-white border border-beige-300 rounded-xl px-4 py-2.5 text-xs text-beige-900 placeholder:text-beige-400 focus:outline-none focus:border-accent-terracotta shadow-sm" maxlength="12" />
+                            <p class="text-[10px] text-beige-800/60 mt-1">평문으로 저장 및 대조하여 수정/삭제 작업을 확인합니다.</p>
+                        </div>
+
+                        <div class="flex items-center space-x-3 pt-3">
+                            <button @click="savePost" class="px-5 py-2.5 rounded-xl bg-accent-terracotta hover:bg-accent-terracottaHover text-white font-bold text-xs shadow-sm">
+                                {{ isEditing ? '수정 완료' : '등록' }}
+                            </button>
+                            <button @click="cancelWriting" class="px-5 py-2.5 rounded-xl bg-white border border-beige-300 text-beige-800 font-bold text-xs">
+                                취소
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Details Screen (Exact design matching Page 6) -->
+                <div v-else-if="currentPost" class="space-y-6">
+                    <button @click="backToList" class="px-4 py-2 rounded-xl bg-white border border-beige-300 text-beige-800 hover:text-beige-900 text-xs font-semibold transition-all flex items-center space-x-1.5 shadow-sm">
+                        <i class="fa-solid fa-chevron-left"></i>
+                        <span>글 목록으로 돌아가기</span>
+                    </button>
+
+                    <div class="premium-card p-8 rounded-2xl border border-beige-300/80 space-y-6">
+                        <div class="flex items-center space-x-2">
+                            <span class="text-[10px] font-bold px-2.5 py-0.5 rounded bg-accent-terracotta/10 text-accent-terracotta border border-accent-terracotta/20">
+                                {{ currentPost.category }}
+                            </span>
+                        </div>
+
+                        <div class="border-b border-beige-300/50 pb-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                            <div>
+                                <h1 class="text-xl font-bold text-beige-900 font-serif leading-snug">{{ currentPost.title }}</h1>
+                                <p class="text-xs text-beige-800/80 mt-1.5">작성자: <span class="text-accent-terracotta font-bold">{{ currentPost.author }}</span> (익명)</p>
+                            </div>
+                            <div class="flex items-center space-x-2 shrink-0">
+                                <button @click="triggerPasswordModal('edit_post', currentPost.id)" class="px-3.5 py-1.5 rounded-lg border border-beige-300 bg-white text-beige-800 hover:bg-beige-50 text-xs font-semibold">
+                                    수정
+                                </button>
+                                <button @click="triggerPasswordModal('delete_post', currentPost.id)" class="px-3.5 py-1.5 rounded-lg border border-beige-300 bg-red-50 text-red-700 hover:bg-red-100/50 text-xs font-semibold">
+                                    삭제
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="text-beige-900 text-xs leading-relaxed whitespace-pre-line min-h-[160px]">
+                            {{ currentPost.content }}
+                        </div>
+                    </div>
+
+                    <!-- Comments block -->
+                    <div class="space-y-4">
+                        <h4 class="text-sm font-bold text-beige-900 font-serif flex items-center space-x-1.5">
+                            <i class="fa-regular fa-comment text-accent-terracotta"></i>
+                            <span>댓글 ({{ currentPost.comments ? currentPost.comments.length : 0 }})</span>
+                        </h4>
+
+                        <!-- Simple Comments Form -->
+                        <div class="p-4 rounded-xl border border-beige-300 bg-white/40 space-y-3">
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                <input type="text" v-model="commentForm.author" placeholder="작성자" class="bg-white border border-beige-300 rounded-lg px-3.5 py-2 text-xs text-beige-900 placeholder:text-beige-400 focus:outline-none focus:border-accent-terracotta">
+                                <input type="password" v-model="commentForm.password" placeholder="비밀번호" class="bg-white border border-beige-300 rounded-lg px-3.5 py-2 text-xs text-beige-900 placeholder:text-beige-400 focus:outline-none focus:border-accent-terracotta" maxlength="12">
+                            </div>
+                            <div class="flex space-x-2">
+                                <input type="text" v-model="commentForm.content" placeholder="건전한 댓글을 입력해주세요." class="flex-grow bg-white border border-beige-300 rounded-lg px-4 py-2 text-xs text-beige-900 placeholder:text-beige-400 focus:outline-none focus:border-accent-terracotta">
+                                <button @click="addComment" class="px-4 py-2 rounded-lg bg-accent-terracotta text-white text-xs font-bold hover:bg-accent-terracottaHover shrink-0">등록</button>
+                            </div>
+                        </div>
+
+                        <!-- Comment list -->
+                        <div v-if="currentPost.comments && currentPost.comments.length > 0" class="space-y-3">
+                            <div v-for="comment in currentPost.comments" :key="comment.id" class="p-4 rounded-xl border border-beige-300/40 bg-white/60 flex items-start justify-between shadow-sm">
+                                <div class="space-y-1">
+                                    <div class="flex items-center space-x-2">
+                                        <span class="text-xs font-bold text-beige-900">{{ comment.author }}</span>
+                                        <span class="text-[10px] text-beige-800/50 font-mono">{{ comment.date }}</span>
+                                    </div>
+                                    <p class="text-xs text-beige-800 leading-relaxed">{{ comment.content }}</p>
+                                </div>
+                                <button @click="triggerPasswordModal('delete_comment', currentPost.id, comment.id)" class="text-[10px] text-beige-400 hover:text-red-600 transition-colors">
+                                    <i class="fa-solid fa-trash-can"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Password Modal View (Exact copy from screenshot page 6) -->
+                <div v-if="passwordPrompt.show" class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm px-4">
+                    <div class="bg-white border border-beige-300 p-8 rounded-2xl max-w-sm w-full space-y-5 text-center shadow-2xl">
+                        <div class="flex flex-col items-center space-y-2">
+                            <span class="text-accent-terracotta text-2xl"><i class="fa-solid fa-lock"></i></span>
+                            <h3 class="text-base font-bold text-beige-900 font-serif">비밀번호 확인</h3>
+                            <p class="text-[11px] text-beige-800/80">글을 작성할 때 설정하신 비밀번호를 기입해 주십시오.</p>
+                        </div>
+                        
+                        <div class="space-y-1">
+                            <input type="password" v-model="passwordPrompt.passwordInput" placeholder="비밀번호 입력" class="w-full bg-beige-50 border border-beige-300 rounded-xl px-4 py-3 text-xs text-beige-900 text-center focus:outline-none focus:border-accent-terracotta" @keyup.enter="verifyPassword">
+                            <p v-if="passwordPrompt.error" class="text-xs text-red-600 font-medium">{{ passwordPrompt.error }}</p>
+                        </div>
+
+                        <div class="flex items-center space-x-2">
+                            <button @click="verifyPassword" class="flex-grow py-2.5 rounded-xl bg-accent-terracotta text-white font-bold text-xs hover:bg-accent-terracottaHover transition-all">
+                                확인
+                            </button>
+                            <button @click="closePasswordModal" class="py-2.5 px-4 rounded-xl bg-beige-200 border border-beige-300 text-beige-800 font-bold text-xs hover:bg-beige-300/40">
+                                취소
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+            </section>
+        </main>
+
+        <!-- Footer -->
+        <footer class="border-t border-beige-300/40 bg-white/40 py-8 mt-12 text-center text-xs text-beige-800">
+            <div class="max-w-6xl mx-auto px-6 space-y-2">
+                <p class="font-bold font-serif text-[13px] text-beige-900">LocalHub 공공데이터 통합 플랫폼</p>
+                <p class="text-[11px] text-beige-800/70">본 사이트는 한국관광공사의 공공데이터 및 국토교통부 표준 API 데이터 기반으로 구성된 독립 소통방입니다.</p>
+                <div class="pt-2 flex justify-center space-x-4 text-[10px] text-beige-800/50">
+                    <span>납기일: 2026. 07. 16</span>
+                    <span>|</span>
+                    <span>FastAPI & SQLite Simulated Stack</span>
+                </div>
+            </div>
+        </footer>
+
+        <!-- Floating AI Chatbot (From Specification requirement III) -->
+        <div class="fixed bottom-6 right-6 z-50 flex flex-col items-end space-y-3">
+            
+            <!-- Expandable chat modal -->
+            <transition name="fade">
+                <div v-show="chatbot.open" 
+                     class="w-[340px] sm:w-[400px] h-[75vh] max-h-[520px] rounded-2xl border border-beige-300 bg-white shadow-2xl flex flex-col overflow-hidden relative">
+                    
+                    <!-- Title header -->
+                    <div class="p-4 border-b border-beige-300 bg-gradient-to-r from-accent-terracotta to-accent-clay flex items-center justify-between text-white">
+                        <div class="flex items-center space-x-2">
+                            <span class="text-sm"><i class="fa-solid fa-robot"></i></span>
+                            <div>
+                                <h4 class="text-xs font-bold leading-tight">LocalHub AI 로컬봇</h4>
+                                <span class="text-[9px] text-beige-100">Gemini 3 Flash API</span>
+                            </div>
+                        </div>
+                        <button @click="chatbot.open = false" class="w-6 h-6 rounded-lg bg-white/10 hover:bg-white/20 text-white flex items-center justify-center text-xs">
+                            <i class="fa-solid fa-xmark"></i>
+                        </button>
+                    </div>
+
+                    <!-- List block -->
+                    <div class="flex-grow overflow-y-auto p-4 space-y-3 bg-beige-50/50" ref="chatHistoryContainer">
+                        <div v-for="(msg, i) in chatbot.messages" :key="i"
+                             :class="['flex items-start space-x-2 max-w-[85%]', msg.role === 'user' ? 'ml-auto flex-row-reverse space-x-reverse' : '']">
+                            
+                            <!-- Bot Avatar -->
+                            <div v-if="msg.role !== 'user'" class="w-7 h-7 rounded-lg bg-accent-terracotta/10 text-accent-terracotta flex items-center justify-center text-xs shrink-0">
+                                <i class="fa-solid fa-robot"></i>
+                            </div>
+
+                            <!-- Text Content -->
+                            <div :class="[
+                                'p-3 rounded-xl text-xs leading-relaxed',
+                                msg.role === 'user' 
+                                    ? 'bg-accent-terracotta text-white rounded-tr-none' 
+                                    : 'bg-white border border-beige-300/60 text-beige-900 rounded-tl-none whitespace-pre-line shadow-sm'
+                            ]">
+                                {{ msg.text }}
+                            </div>
+                        </div>
+
+                        <!-- Typing Simulator -->
+                        <div v-if="chatbot.loading" class="flex items-start space-x-2 max-w-[85%] animate-pulse">
+                            <div class="w-7 h-7 rounded-lg bg-accent-terracotta/10 text-accent-terracotta flex items-center justify-center text-xs shrink-0">
+                                <i class="fa-solid fa-robot"></i>
+                            </div>
+                            <div class="bg-white border border-beige-300/60 p-3 rounded-xl rounded-tl-none flex items-center space-x-1">
+                                <span class="w-1 h-1 bg-accent-terracotta rounded-full animate-bounce"></span>
+                                <span class="w-1 h-1 bg-accent-terracotta rounded-full animate-bounce" style="animation-delay: 0.1s"></span>
+                                <span class="w-1 h-1 bg-accent-terracotta rounded-full animate-bounce" style="animation-delay: 0.2s"></span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Chat inputs -->
+                    <div class="p-3 border-t border-beige-300/60 bg-white flex items-center space-x-2">
+                        <input type="text" v-model="chatbot.input" 
+                               @keyup.enter="sendChat"
+                               placeholder="예: 서울 추천지, 축제, 맛집 일정 질문..." 
+                               class="flex-grow bg-beige-50 border border-beige-300 rounded-lg px-3 py-2 text-xs text-beige-900 focus:outline-none focus:border-accent-terracotta" />
+                        <button @click="sendChat" class="w-8 h-8 rounded-lg bg-accent-terracotta text-white flex items-center justify-center text-xs">
+                            <i class="fa-solid fa-paper-plane"></i>
+                        </button>
+                    </div>
+                </div>
+            </transition>
+
+            <!-- Floating active Trigger -->
+            <button @click="chatbot.open = !chatbot.open" 
+                    class="w-12 h-12 rounded-full bg-accent-terracotta hover:bg-accent-terracottaHover text-white flex items-center justify-center shadow-lg transition-transform active:scale-95 relative">
+                <i :class="chatbot.open ? 'fa-solid fa-comment-slash text-base' : 'fa-solid fa-comments text-base'"></i>
+                <span class="absolute -top-1 -right-1 w-4 h-4 bg-red-600 text-white rounded-full text-[9px] font-bold flex items-center justify-center animate-pulse">AI</span>
+            </button>
+        </div>
+
+    </div>
+
+    <!-- ============================================== -->
+    <!-- Vue 3 Setup and Native Logic Scripts           -->
+    <!-- ============================================== -->
+    <script>
+        const { createApp, ref, computed, nextTick, onMounted, watch } = Vue;
+
+        createApp({
+            setup() {
+                // Currently Selected Region Context (Toggleable between Seoul and Kyungbuk/Gumi)
+                const currentRegion = ref('Seoul');
+
+                // System Tabs matching the top right navigation in image_7a7c03.png
+                const tabs = [
+                    { id: 'home', name: 'Home' },
+                    { id: 'info', name: 'Local Info' },
+                    { id: 'map', name: 'Map' },
+                    { id: 'board', name: 'Community' }
+                ];
+                const activeTab = ref('home');
+
+                // 보유한 서울 지역 JSON 데이터 기준 카테고리
+                const categories = [
+                    { id: 'tourist', name: '관광지', icon: 'fa-solid fa-tree' },
+                    { id: 'sports', name: '레포츠', icon: 'fa-solid fa-person-running' },
+                    { id: 'culture', name: '문화시설', icon: 'fa-solid fa-landmark' },
+                    { id: 'shopping', name: '쇼핑', icon: 'fa-solid fa-bag-shopping' },
+                    { id: 'stay', name: '숙박', icon: 'fa-solid fa-hotel' },
+                    { id: 'course', name: '여행코스', icon: 'fa-solid fa-route' },
+                    { id: 'festival', name: '축제공연행사', icon: 'fa-solid fa-calendar-days' }
+                ];
+                const activeCategory = ref('');
+
+                // Recent posts strictly mirroring the list in image_7a7c03.png
+                const samplePosts = ref([
+                    { id: 1, category: '쇼핑', title: '동대문 야시장 쇼핑 팁', author: '쇼핑고수', content: '동대문 패션타운 야시장은 금, 토 야간에 도매 물건이 활성화되어 볼거리가 가득합니다. 개인 구매 시에는 현금을 챙기시는 편이 가격 협상에 아주 유용합니다. 주차는 인근 공영주차장 이용을 적극 권장해 드립니다.', password: '1234', views: 17, date: '2026-07-10', comments: [] },
+                    { id: 2, category: '숙박', title: '강남 근처 가성비 숙소 후기', author: '출장맨', content: '출장 차 방문했는데 역삼역 도보 5분 거리에 1박 8만원대 깨끗하고 가성비 훌륭한 비즈니스 호텔이 있어 공유해드립니다. 침구류 위생 상태가 수준급이며 어메니티 패키지도 풍부합니다.', password: '1234', views: 1, date: '2026-07-12', comments: [] },
+                    { id: 3, category: '축제공연행사', title: '이번 달 서울 축제 일정 공유', author: '축제요정', content: '반포 한강공원에서 야간 도깨비 야시장 및 분수 쇼 일정이 이번주 주말부터 정식으로 시작됩니다. 가족 연인분들이 돗자리 펴고 저녁 푸드트럭 야식도 먹고 가을 강바람을 쐬기에 알맞은 코스입니다.', password: '1234', views: 3, date: '2026-07-13', comments: [] },
+                    { id: 4, category: '레포츠', title: '잠실종합운동장 러닝 코스 후기', author: '러닝초보', content: '잠실종합운동장 주변은 평탄한 보행로와 한강 접근성이 좋아 가볍게 달리기 좋은 코스입니다. 저녁 시간에는 이용자가 많으므로 보행자와 자전거 통행에 주의하면서 이용하는 것을 추천합니다.', password: '1234', views: 1, date: '2026-07-14', comments: [] },
+                    { id: 5, category: '관광지', title: '양화한강공원 자전거 코스 추천', author: '여행러버', content: '선유도 일원으로 넘어가는 양화나루 코스가 시원하게 자전거 타기에 참 멋집니다. 주말 정체 구간이 덜하고 노을 경관이 수려해 오후 6시 전후 시간대에 꼭 자전거 라이딩 가보시는 것을 추천드립니다.', password: '1234', views: 7, date: '2026-07-14', comments: [] }
+                ]);
+
+                // Region database directories (Seoul only)
+                const directoryLocations = [
+                    { name: '양화 한강공원', type: 'tourist', lat: 37.5385, lng: 126.8971, address: '서울 영등포구 노들로 110', phone: '02-3780-0581', desc: '선유도 공원과 맞닿은 수려한 한강 조망 명소이며 시원하게 잘 뚫린 한강 종주 자전거 코스 및 정원 쉼터가 있습니다.' },
+                    { name: '세종문화회관', type: 'culture', lat: 37.5724, lng: 126.9757, address: '서울 종로구 세종대로 175', phone: '02-399-1000', desc: '다양한 클래식, 뮤지컬, 현대 예술 전시가 연중 끊이지 않는 대한민국 대표 문화 예술 전시 극장 공간입니다.' },
+                    { name: '반포 한강 달빛축제', type: 'festival', lat: 37.5113, lng: 126.9967, address: '서울 서초구 반포동 한강공원', phone: '02-120', desc: '반포대교 무지개분수 연동 무대 아래 화려한 먹거리 푸드트럭 야시장 장터가 함께 서는 밤의 시그니처 축제 마당입니다.' },
+                    { name: '남산 둘레길 코스', type: 'course', lat: 37.5512, lng: 126.9882, address: '서울 중구 회현동 남산', phone: '02-3783-5900', desc: '도심 속 울창한 숲터널을 안전하고 산뜻하게 걸을 수 있는 가벼운 보행 전용 데크 산책로입니다.' },
+                    { name: '잠실 스포츠 복합단지', type: 'sports', lat: 37.5148, lng: 127.0729, address: '서울 송파구 올림픽로 25', phone: '02-2240-8800', desc: '야구, 축구, 마라톤 등 다양한 육상 구기 체험과 레포츠 활성화를 지원하는 메가 체육 단지 시설입니다.' },
+                    { name: '강남 비즈니스 관광 호텔', type: 'stay', lat: 37.5005, lng: 127.0362, address: '서울 강남구 테헤란로 12', phone: '02-555-0012', desc: '가성비와 청결함, 뛰어난 교통망을 지녀 출장맨 및 도심 호캉스 휴가족들이 즐겨 찾는 고성능 위생 휴식처입니다.' },
+                    { name: '동대문 평화패션 타운', type: 'shopping', lat: 37.5694, lng: 127.0097, address: '서울 중구 을지로6가', phone: '02-2262-0114', desc: '개성 넘치는 다양한 신상 의류들과 소품을 24시간 도소매 가격으로 가장 먼저 소비해볼 수 있는 한국의 패션 심장입니다.' }
+                ];
+
+                const activeInfoCategory = ref('all');
+                const infoSearch = ref('');
+                const infoCurrentPage = ref(1);
+                const infoPageSize = 20;
+                const selectedInfoItem = ref(null);
+
+                // API에서 image_url, firstimage, image 등의 필드가 내려오면 우선 사용합니다.
+                // 이미지가 없는 샘플 데이터는 카테고리별 기본 이미지를 사용합니다.
+                const locationFallbackImages = {
+                    tourist: 'https://images.unsplash.com/photo-1538485399081-7c8971a7a58b?auto=format&fit=crop&w=900&q=80',
+                    culture: 'https://images.unsplash.com/photo-1564399579883-451a5d44ec08?auto=format&fit=crop&w=900&q=80',
+                    festival: 'https://images.unsplash.com/photo-1501386761578-eac5c94b800a?auto=format&fit=crop&w=900&q=80',
+                    course: 'https://images.unsplash.com/photo-1551632811-561732d1e306?auto=format&fit=crop&w=900&q=80',
+                    sports: 'https://images.unsplash.com/photo-1461896836934-ffe607ba8211?auto=format&fit=crop&w=900&q=80',
+                    stay: 'https://images.unsplash.com/photo-1566073771259-6a8506099945?auto=format&fit=crop&w=900&q=80',
+                    shopping: 'https://images.unsplash.com/photo-1441986300917-64674bd600d8?auto=format&fit=crop&w=900&q=80'
+                };
+
+                // Board and Community variables
+                const boardFilter = ref('all');
+                const boardSearch = ref('');
+                const boardCurrentPage = ref(1);
+                const boardPageSize = 10;
+                const currentPost = ref(null);
+                const isWriting = ref(false);
+                const isEditing = ref(false);
+                const form = ref({
+                    id: null,
+                    category: '관광지',
+                    author: '',
+                    title: '',
+                    content: '',
+                    password: ''
+                });
+
+                const commentForm = ref({
+                    author: '',
+                    content: '',
+                    password: ''
+                });
+
+                const passwordPrompt = ref({
+                    show: false,
+                    action: '',
+                    postId: null,
+                    commentId: null,
+                    passwordInput: '',
+                    error: ''
+                });
+
+                const selectedLocationName = ref('');
+
+                // Kakao map state. Replace this value with the JavaScript key issued in Kakao Developers.
+                const KAKAO_MAP_APP_KEY = 'YOUR_KAKAO_JAVASCRIPT_KEY';
+                const mapCategory = ref('tourist');
+                const mapSetupRequired = ref(KAKAO_MAP_APP_KEY === 'YOUR_KAKAO_JAVASCRIPT_KEY');
+
+                const filteredMapLocations = computed(() => {
+                    return directoryLocations.filter(item => item.type === mapCategory.value);
+                });
+
+                // Filter items according to categories and search
+                const filteredInfoItems = computed(() => {
+                    const keyword = infoSearch.value.trim().toLowerCase();
+
+                    return directoryLocations.filter(item => {
+                        const catMatch = activeInfoCategory.value === 'all' || item.type === activeInfoCategory.value;
+                        const searchableText = [item.name, item.address, item.desc]
+                            .filter(Boolean)
+                            .join(' ')
+                            .toLowerCase();
+                        const searchMatch = !keyword || searchableText.includes(keyword);
+                        return catMatch && searchMatch;
+                    });
+                });
+
+                const infoTotalPages = computed(() => {
+                    return Math.max(1, Math.ceil(filteredInfoItems.value.length / infoPageSize));
+                });
+
+                const paginatedInfoItems = computed(() => {
+                    const start = (infoCurrentPage.value - 1) * infoPageSize;
+                    return filteredInfoItems.value.slice(start, start + infoPageSize);
+                });
+
+                watch([activeInfoCategory, infoSearch], () => {
+                    infoCurrentPage.value = 1;
+                });
+
+                // Filtered posts for community search
+                const filteredBoardPosts = computed(() => {
+                    const keyword = boardSearch.value.trim().toLowerCase();
+
+                    return samplePosts.value.filter(post => {
+                        const catKey = categories.find(c => c.id === boardFilter.value)?.name;
+                        const catMatch = boardFilter.value === 'all' || post.category === catKey;
+                        const searchableText = [post.title, post.content, post.author]
+                            .filter(Boolean)
+                            .join(' ')
+                            .toLowerCase();
+                        const searchMatch = !keyword || searchableText.includes(keyword);
+                        return catMatch && searchMatch;
+                    });
+                });
+
+                const boardTotalPages = computed(() => {
+                    return Math.max(1, Math.ceil(filteredBoardPosts.value.length / boardPageSize));
+                });
+
+                const paginatedBoardPosts = computed(() => {
+                    const start = (boardCurrentPage.value - 1) * boardPageSize;
+                    return filteredBoardPosts.value.slice(start, start + boardPageSize);
+                });
+
+                watch([boardFilter, boardSearch], () => {
+                    boardCurrentPage.value = 1;
+                });
+
+                watch(boardTotalPages, (totalPages) => {
+                    if (boardCurrentPage.value > totalPages) {
+                        boardCurrentPage.value = totalPages;
+                    }
+                });
+
+                const setInfoCategory = (categoryId) => {
+                    activeInfoCategory.value = categoryId;
+                    infoCurrentPage.value = 1;
+                };
+
+                const applyInfoSearch = () => {
+                    infoCurrentPage.value = 1;
+                };
+
+                const goToInfoPage = (page) => {
+                    infoCurrentPage.value = Math.min(Math.max(page, 1), infoTotalPages.value);
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                };
+
+                const goToBoardPage = (page) => {
+                    boardCurrentPage.value = Math.min(Math.max(page, 1), boardTotalPages.value);
+                };
+
+                const getLocationImage = (item) => {
+                    return item.image_url || item.imageUrl || item.firstimage || item.firstImage || item.image || locationFallbackImages[item.type] || locationFallbackImages.tourist;
+                };
+
+                const handleLocationImageError = (event) => {
+                    const fallback = locationFallbackImages.tourist;
+                    if (event.target.src !== fallback) {
+                        event.target.src = fallback;
+                    }
+                };
+
+                const openInfoModal = (item) => {
+                    selectedInfoItem.value = item;
+                };
+
+                const closeInfoModal = () => {
+                    selectedInfoItem.value = null;
+                };
+
+                const openKakaoMap = (item) => {
+                    if (!item) return;
+
+                    const placeName = encodeURIComponent(item.name || '장소');
+                    const lat = Number(item.lat);
+                    const lng = Number(item.lng);
+                    const hasCoordinates = Number.isFinite(lat) && Number.isFinite(lng);
+                    const url = hasCoordinates
+                        ? `https://map.kakao.com/link/map/${placeName},${lat},${lng}`
+                        : `https://map.kakao.com/link/search/${placeName}`;
+
+                    const popup = window.open(url, '_blank');
+                    if (popup) popup.opener = null;
+                };
+
+                // Quick Filter trigger on Home Screen
+                const filterByCategory = (catId) => {
+                    activeCategory.value = catId;
+                    activeInfoCategory.value = catId;
+                    infoCurrentPage.value = 1;
+                    activeTab.value = 'info';
+                };
+
+                const getCategoryName = (typeId) => {
+                    return categories.find(c => c.id === typeId)?.name || '';
+                };
+
+                const getCategoryIcon = (typeId) => {
+                    return categories.find(c => c.id === typeId)?.icon || 'fa-solid fa-map-pin';
+                };
+
+                const changeTab = (tabId) => {
+                    activeTab.value = tabId;
+                    isWriting.value = false;
+                    currentPost.value = null;
+                    selectedInfoItem.value = null;
+                    if (tabId === 'map') {
+                        nextTick(() => {
+                            initKakaoMap();
+                        });
+                    }
+                };
+
+                const viewRecentPost = (post) => {
+                    currentPost.value = post;
+                    isWriting.value = false;
+                    activeTab.value = 'board';
+                };
+
+                const startWriting = () => {
+                    isWriting.value = true;
+                    isEditing.value = false;
+                    form.value = { id: null, category: '관광지', author: '', title: '', content: '', password: '' };
+                };
+
+                const viewPost = (post) => {
+                    currentPost.value = post;
+                    post.views++;
+                    isWriting.value = false;
+                };
+
+                const backToList = () => {
+                    currentPost.value = null;
+                    isWriting.value = false;
+                };
+
+                const cancelWriting = () => {
+                    isWriting.value = false;
+                    isEditing.value = false;
+                };
+
+                const savePost = () => {
+                    const f = form.value;
+                    if (!f.title.trim() || !f.content.trim() || !f.author.trim() || !f.password.trim()) {
+                        alert('모든 입력란 및 비밀번호를 명확히 기재하십시오.');
+                        return;
+                    }
+
+                    if (isEditing.value) {
+                        const index = samplePosts.value.findIndex(p => p.id === f.id);
+                        if (index !== -1) {
+                            samplePosts.value[index].title = f.title;
+                            samplePosts.value[index].content = f.content;
+                            samplePosts.value[index].category = f.category;
+                            samplePosts.value[index].author = f.author;
+                            currentPost.value = samplePosts.value[index];
+                        }
+                        isEditing.value = false;
+                        isWriting.value = false;
+                    } else {
+                        const newId = samplePosts.value.length > 0 ? Math.max(...samplePosts.value.map(p => p.id)) + 1 : 1;
+                        const newPost = {
+                            id: newId,
+                            category: f.category,
+                            title: f.title,
+                            content: f.content,
+                            author: f.author,
+                            password: f.password,
+                            views: 0,
+                            date: new Date().toISOString().split('T')[0],
+                            comments: []
+                        };
+                        samplePosts.value.unshift(newPost);
+                        isWriting.value = false;
+                    }
+                };
+
+                const addComment = () => {
+                    const cf = commentForm.value;
+                    if (!cf.author.trim() || !cf.content.trim() || !cf.password.trim()) {
+                        alert('댓글 입력란을 확인해 주십시오.');
+                        return;
+                    }
+                    if (!currentPost.value.comments) {
+                        currentPost.value.comments = [];
+                    }
+                    const newId = currentPost.value.comments.length > 0 ? Math.max(...currentPost.value.comments.map(c => c.id)) + 1 : 1;
+                    currentPost.value.comments.push({
+                        id: newId,
+                        author: cf.author,
+                        content: cf.content,
+                        password: cf.password,
+                        date: new Date().toISOString().split('T')[0]
+                    });
+                    commentForm.value = { author: '', content: '', password: '' };
+                };
+
+                const triggerPasswordModal = (action, postId, commentId = null) => {
+                    passwordPrompt.value = {
+                        show: true,
+                        action: action,
+                        postId: postId,
+                        commentId: commentId,
+                        passwordInput: '',
+                        error: ''
+                    };
+                };
+
+                const closePasswordModal = () => {
+                    passwordPrompt.value = { show: false, action: '', postId: null, commentId: null, passwordInput: '', error: '' };
+                };
+
+                const verifyPassword = () => {
+                    const prompt = passwordPrompt.value;
+                    const post = samplePosts.value.find(p => p.id === prompt.postId);
+                    if (!post) {
+                        closePasswordModal();
+                        return;
+                    }
+
+                    if (prompt.action === 'edit_post') {
+                        if (post.password === prompt.passwordInput) {
+                            form.value = {
+                                id: post.id,
+                                category: post.category,
+                                author: post.author,
+                                title: post.title,
+                                content: post.content,
+                                password: post.password
+                            };
+                            isWriting.value = true;
+                            isEditing.value = true;
+                            closePasswordModal();
+                        } else {
+                            prompt.error = '비밀번호가 일치하지 않습니다.';
+                        }
+                    } else if (prompt.action === 'delete_post') {
+                        if (post.password === prompt.passwordInput) {
+                            samplePosts.value = samplePosts.value.filter(p => p.id !== prompt.postId);
+                            currentPost.value = null;
+                            closePasswordModal();
+                        } else {
+                            prompt.error = '비밀번호가 일치하지 않습니다.';
+                        }
+                    } else if (prompt.action === 'delete_comment') {
+                        const comment = post.comments.find(c => c.id === prompt.commentId);
+                        if (comment && comment.password === prompt.passwordInput) {
+                            post.comments = post.comments.filter(c => c.id !== prompt.commentId);
+                            closePasswordModal();
+                        } else {
+                            prompt.error = '비밀번호가 일치하지 않습니다.';
+                        }
+                    }
+                };
+
+                // Kakao Maps JavaScript API integration
+                let mapInstance = null;
+                let markerClusterer = null;
+                let mapMarkers = [];
+                let activeInfoWindow = null;
+                let kakaoSdkPromise = null;
+
+                // LocalHub의 테라코타 포인트 컬러에 맞춘 Kakao 지도 마커
+                const TERRACOTTA_MARKER_SVG = `
+                    <svg xmlns="http://www.w3.org/2000/svg" width="38" height="50" viewBox="0 0 38 50">
+                        <defs>
+                            <filter id="shadow" x="-30%" y="-20%" width="160%" height="170%">
+                                <feDropShadow dx="0" dy="3" stdDeviation="2.2" flood-color="#5c5243" flood-opacity="0.28"/>
+                            </filter>
+                        </defs>
+                        <path filter="url(#shadow)" fill="#91573d" d="M19 1.5C9.7 1.5 2.2 9 2.2 18.3c0 12.5 16.8 29.9 16.8 29.9s16.8-17.4 16.8-29.9C35.8 9 28.3 1.5 19 1.5z"/>
+                        <circle cx="19" cy="18.5" r="7.2" fill="#fdfcf7"/>
+                        <circle cx="19" cy="18.5" r="3.2" fill="#d0bfa7"/>
+                    </svg>`;
+                const TERRACOTTA_MARKER_SRC = `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(TERRACOTTA_MARKER_SVG)}`;
+
+                const loadKakaoMapsSdk = () => {
+                    if (window.kakao?.maps) {
+                        return Promise.resolve();
+                    }
+
+                    if (mapSetupRequired.value) {
+                        return Promise.reject(new Error('Kakao Maps JavaScript key is not configured.'));
+                    }
+
+                    if (kakaoSdkPromise) return kakaoSdkPromise;
+
+                    kakaoSdkPromise = new Promise((resolve, reject) => {
+                        const script = document.createElement('script');
+                        script.src = `https://dapi.kakao.com/v2/maps/sdk.js?appkey=${KAKAO_MAP_APP_KEY}&libraries=clusterer&autoload=false`;
+                        script.async = true;
+                        script.onload = () => {
+                            if (!window.kakao?.maps) {
+                                reject(new Error('Kakao Maps SDK failed to initialize.'));
+                                return;
+                            }
+                            window.kakao.maps.load(resolve);
+                        };
+                        script.onerror = () => reject(new Error('Kakao Maps SDK could not be loaded.'));
+                        document.head.appendChild(script);
+                    });
+
+                    return kakaoSdkPromise;
+                };
+
+                const initKakaoMap = async () => {
+                    if (mapSetupRequired.value) return;
+
+                    try {
+                        await loadKakaoMapsSdk();
+
+                        if (!mapInstance) {
+                            const container = document.getElementById('map-container');
+                            mapInstance = new kakao.maps.Map(container, {
+                                center: new kakao.maps.LatLng(37.5665, 126.9780),
+                                level: 8
+                            });
+
+                            markerClusterer = new kakao.maps.MarkerClusterer({
+                                map: mapInstance,
+                                averageCenter: true,
+                                minLevel: 7,
+                                disableClickZoom: false,
+                                calculator: [10, 50, 100],
+                                styles: [
+                                    {
+                                        width: '38px', height: '38px',
+                                        background: 'rgba(145, 87, 61, 0.92)',
+                                        border: '3px solid rgba(255,255,255,0.92)',
+                                        borderRadius: '50%', color: '#fff',
+                                        textAlign: 'center', fontWeight: '800',
+                                        lineHeight: '32px',
+                                        boxShadow: '0 5px 15px rgba(145, 87, 61, 0.28)'
+                                    },
+                                    {
+                                        width: '44px', height: '44px',
+                                        background: 'rgba(145, 87, 61, 0.94)',
+                                        border: '3px solid rgba(255,255,255,0.92)',
+                                        borderRadius: '50%', color: '#fff',
+                                        textAlign: 'center', fontWeight: '800',
+                                        lineHeight: '38px',
+                                        boxShadow: '0 5px 16px rgba(145, 87, 61, 0.30)'
+                                    },
+                                    {
+                                        width: '50px', height: '50px',
+                                        background: 'rgba(122, 71, 48, 0.94)',
+                                        border: '3px solid rgba(255,255,255,0.92)',
+                                        borderRadius: '50%', color: '#fff',
+                                        textAlign: 'center', fontWeight: '800',
+                                        lineHeight: '44px',
+                                        boxShadow: '0 6px 18px rgba(122, 71, 48, 0.32)'
+                                    },
+                                    {
+                                        width: '56px', height: '56px',
+                                        background: 'rgba(92, 82, 67, 0.95)',
+                                        border: '3px solid rgba(255,255,255,0.92)',
+                                        borderRadius: '50%', color: '#fff',
+                                        textAlign: 'center', fontWeight: '800',
+                                        lineHeight: '50px',
+                                        boxShadow: '0 7px 20px rgba(92, 82, 67, 0.34)'
+                                    }
+                                ]
+                            });
+                        } else {
+                            mapInstance.relayout();
+                        }
+
+                        renderKakaoMarkers();
+                    } catch (error) {
+                        console.error(error);
+                        mapSetupRequired.value = true;
+                    }
+                };
+
+                const clearKakaoMarkers = () => {
+                    if (activeInfoWindow) {
+                        activeInfoWindow.close();
+                        activeInfoWindow = null;
+                    }
+                    if (markerClusterer) markerClusterer.clear();
+                    mapMarkers.forEach(marker => marker.setMap(null));
+                    mapMarkers = [];
+                };
+
+                const createInfoWindowContent = (loc) => `
+                    <div class="kakao-map-info">
+                        <span class="kakao-map-info__category">${getCategoryName(loc.type)}</span>
+                        <h4 class="kakao-map-info__title">${loc.name}</h4>
+                        <p class="kakao-map-info__description">${loc.desc}</p>
+                    </div>
+                `;
+
+                const renderKakaoMarkers = () => {
+                    if (!mapInstance || !window.kakao?.maps) return;
+
+                    clearKakaoMarkers();
+                    const locations = filteredMapLocations.value;
+                    if (locations.length === 0) return;
+
+                    const bounds = new kakao.maps.LatLngBounds();
+
+                    const markerImage = new kakao.maps.MarkerImage(
+                        TERRACOTTA_MARKER_SRC,
+                        new kakao.maps.Size(38, 50),
+                        { offset: new kakao.maps.Point(19, 50) }
+                    );
+
+                    mapMarkers = locations.map(loc => {
+                        const position = new kakao.maps.LatLng(loc.lat, loc.lng);
+                        const marker = new kakao.maps.Marker({
+                            position,
+                            title: loc.name,
+                            image: markerImage
+                        });
+
+                        kakao.maps.event.addListener(marker, 'click', () => {
+                            selectedLocationName.value = loc.name;
+                            if (activeInfoWindow) activeInfoWindow.close();
+                            activeInfoWindow = new kakao.maps.InfoWindow({
+                                content: createInfoWindowContent(loc),
+                                removable: true
+                            });
+                            activeInfoWindow.open(mapInstance, marker);
+                        });
+
+                        bounds.extend(position);
+                        return marker;
+                    });
+
+                    if (markerClusterer) {
+                        markerClusterer.addMarkers(mapMarkers);
+                    } else {
+                        mapMarkers.forEach(marker => marker.setMap(mapInstance));
+                    }
+
+                    if (locations.length === 1) {
+                        mapInstance.setCenter(bounds.getSouthWest());
+                        mapInstance.setLevel(5);
+                    } else {
+                        mapInstance.setBounds(bounds, 70, 70, 70, 70);
+                    }
+                };
+
+                const selectMapCategory = (categoryId) => {
+                    mapCategory.value = categoryId;
+                    selectedLocationName.value = '';
+                    nextTick(() => {
+                        if (mapInstance) {
+                            mapInstance.relayout();
+                            renderKakaoMarkers();
+                        } else {
+                            initKakaoMap();
+                        }
+                    });
+                };
+
+                const panToLocation = (loc) => {
+                    selectedLocationName.value = loc.name;
+                    mapCategory.value = loc.type;
+
+                    nextTick(async () => {
+                        await initKakaoMap();
+                        if (!mapInstance || !window.kakao?.maps) return;
+                        mapInstance.setCenter(new kakao.maps.LatLng(loc.lat, loc.lng));
+                        mapInstance.setLevel(4);
+                    });
+                };
+
+                const showOnMap = (item) => {
+                    mapCategory.value = item.type;
+                    activeTab.value = 'map';
+                    nextTick(async () => {
+                        await initKakaoMap();
+                        panToLocation(item);
+                    });
+                };
+
+                // AI Chatbot simulation state (FastAPI Rest API integrated structure)
+                const chatbot = ref({
+                    open: false,
+                    messages: [
+                        { role: 'assistant', text: '반갑습니다! LocalHub AI 안내봇입니다. 선택하신 지역의 축제 일정이나 숨겨진 명소 정보를 한국관광공사 수집 데이터 바탕으로 신속하고 친절하게 대답해 드리겠습니다!' }
+                    ],
+                    input: '',
+                    loading: false
+                });
+
+                const sendChat = async () => {
+                    const text = chatbot.value.input.trim();
+                    if (!text) return;
+
+                    chatbot.value.messages.push({ role: 'user', text: text });
+                    chatbot.value.input = '';
+                    chatbot.value.loading = true;
+
+                    // Automatically focus chat list bottom
+                    nextTick(() => {
+                        const box = document.querySelector('.overflow-y-auto.p-4.space-y-3.bg-beige-50\\/50');
+                        if (box) box.scrollTop = box.scrollHeight;
+                    });
+
+                    // Quick automated mock AI replies matching schema parameters
+                    let response = '';
+                    const lowered = text.toLowerCase();
+                    
+                    setTimeout(() => {
+                        if (lowered.includes('관광지') || lowered.includes('추천') || lowered.includes('어디')) {
+                            response = `📍 **서울의 대표 추천 스팟 안내해 드립니다:**
+
+1. **양화 한강공원**
+   - **설명:** 가족, 연인과 함께 주말 피크닉이나 산책에 안성맞춤인 친자연적인 명소입니다.
+2. **세종문화회관 및 둘레길**
+   - **설명:** 우수한 전망 모노레일 및 풍부한 산림 휴식처를 품고 있어 휴일 도심 근방 피서지로 큰 인기를 끕니다.`;
+                        } else if (lowered.includes('맛집') || lowered.includes('음식점') || lowered.includes('노포')) {
+                            response = `🍲 **서울 지역 최고 인기 노포 맛집 정보:**
+
+- **종로 피맛골 식당 골목**
+  - **시그니처:** 오래도록 한 자리를 지켜온 얼큰하고 진한 육수의 전통 국밥과 감칠맛 넘치는 묵은지 요리가 미식가들 사이에서 대단히 화제입니다.`;
+                        } else if (lowered.includes('축제') || lowered.includes('행사') || lowered.includes('일정')) {
+                            response = `🎉 **서울 연간 주요 축제 가이드:**
+
+- **반포 한강 달빛 광장 축제**
+  - **특징:** 다채로운 길거리 푸드 트럭과 화려한 야경 경관이 어우러져 매년 수만 명의 방문객이 방문하는 대표 로컬 이벤트입니다.`;
+                        } else {
+                            response = `💡 **서울 공공데이터에 기반해 분석을 제공합니다.**
+
+- 명소/관광지 추천 여부
+- 요일별 로컬 소울푸드 및 맛집 
+- 게시판 최근 글과 연계한 실시간 커뮤니티 동향 정보
+
+문의사항을 상세하게 입력하시면 정확한 AI 가이드를 제공해 드리겠습니다.`;
+                        }
+
+                        chatbot.value.messages.push({ role: 'assistant', text: response });
+                        chatbot.value.loading = false;
+
+                        nextTick(() => {
+                            const box = document.querySelector('.overflow-y-auto.p-4.space-y-3.bg-beige-50\\/50');
+                            if (box) box.scrollTop = box.scrollHeight;
+                        });
+                    }, 800);
+                };
+
+                return {
+                    currentRegion,
+                    tabs,
+                    activeTab,
+                    categories,
+                    activeCategory,
+                    samplePosts,
+                    directoryLocations,
+                    activeInfoCategory,
+                    infoSearch,
+                    infoCurrentPage,
+                    infoTotalPages,
+                    paginatedInfoItems,
+                    selectedInfoItem,
+                    boardFilter,
+                    boardSearch,
+                    boardCurrentPage,
+                    boardPageSize,
+                    boardTotalPages,
+                    paginatedBoardPosts,
+                    currentPost,
+                    isWriting,
+                    isEditing,
+                    form,
+                    commentForm,
+                    passwordPrompt,
+                    selectedLocationName,
+                    mapCategory,
+                    mapSetupRequired,
+                    filteredMapLocations,
+                    filteredInfoItems,
+                    filteredBoardPosts,
+                    setInfoCategory,
+                    applyInfoSearch,
+                    goToInfoPage,
+                    goToBoardPage,
+                    getLocationImage,
+                    handleLocationImageError,
+                    openInfoModal,
+                    closeInfoModal,
+                    openKakaoMap,
+                    filterByCategory,
+                    getCategoryName,
+                    getCategoryIcon,
+                    changeTab,
+                    viewRecentPost,
+                    startWriting,
+                    viewPost,
+                    backToList,
+                    cancelWriting,
+                    savePost,
+                    addComment,
+                    triggerPasswordModal,
+                    closePasswordModal,
+                    verifyPassword,
+                    selectMapCategory,
+                    panToLocation,
+                    showOnMap,
+                    chatbot,
+                    sendChat
+                };
+            }
+        }).mount('#app');
+    </script>
+</body>
+</html>
