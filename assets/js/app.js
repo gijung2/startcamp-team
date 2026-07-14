@@ -1,745 +1,220 @@
-const { createApp, ref, computed, nextTick, onMounted, watch } = Vue;
-
-        createApp({
-            setup() {
-                // Currently Selected Region Context (Toggleable between Seoul and Kyungbuk/Gumi)
-                const currentRegion = ref('Seoul');
-
-                // System Tabs matching the top right navigation in image_7a7c03.png
-                const tabs = [
-                    { id: 'home', name: 'Home' },
-                    { id: 'info', name: 'Local Info' },
-                    { id: 'map', name: 'Map' },
-                    { id: 'board', name: 'Community' }
-                ];
-                const activeTab = ref('home');
-
-                // 보유한 서울 지역 JSON 데이터 기준 카테고리
-                const categories = [
-                    { id: 'tourist', name: '관광지', icon: 'fa-solid fa-tree' },
-                    { id: 'sports', name: '레포츠', icon: 'fa-solid fa-person-running' },
-                    { id: 'culture', name: '문화시설', icon: 'fa-solid fa-landmark' },
-                    { id: 'shopping', name: '쇼핑', icon: 'fa-solid fa-bag-shopping' },
-                    { id: 'stay', name: '숙박', icon: 'fa-solid fa-hotel' },
-                    { id: 'course', name: '여행코스', icon: 'fa-solid fa-route' },
-                    { id: 'festival', name: '축제공연행사', icon: 'fa-solid fa-calendar-days' }
-                ];
-                const activeCategory = ref('');
-
-                // Recent posts strictly mirroring the list in image_7a7c03.png
-                const samplePosts = ref([
-                    { id: 1, category: '쇼핑', title: '동대문 야시장 쇼핑 팁', author: '쇼핑고수', content: '동대문 패션타운 야시장은 금, 토 야간에 도매 물건이 활성화되어 볼거리가 가득합니다. 개인 구매 시에는 현금을 챙기시는 편이 가격 협상에 아주 유용합니다. 주차는 인근 공영주차장 이용을 적극 권장해 드립니다.', password: '1234', views: 17, date: '2026-07-10', comments: [] },
-                    { id: 2, category: '숙박', title: '강남 근처 가성비 숙소 후기', author: '출장맨', content: '출장 차 방문했는데 역삼역 도보 5분 거리에 1박 8만원대 깨끗하고 가성비 훌륭한 비즈니스 호텔이 있어 공유해드립니다. 침구류 위생 상태가 수준급이며 어메니티 패키지도 풍부합니다.', password: '1234', views: 1, date: '2026-07-12', comments: [] },
-                    { id: 3, category: '축제공연행사', title: '이번 달 서울 축제 일정 공유', author: '축제요정', content: '반포 한강공원에서 야간 도깨비 야시장 및 분수 쇼 일정이 이번주 주말부터 정식으로 시작됩니다. 가족 연인분들이 돗자리 펴고 저녁 푸드트럭 야식도 먹고 가을 강바람을 쐬기에 알맞은 코스입니다.', password: '1234', views: 3, date: '2026-07-13', comments: [] },
-                    { id: 4, category: '레포츠', title: '잠실종합운동장 러닝 코스 후기', author: '러닝초보', content: '잠실종합운동장 주변은 평탄한 보행로와 한강 접근성이 좋아 가볍게 달리기 좋은 코스입니다. 저녁 시간에는 이용자가 많으므로 보행자와 자전거 통행에 주의하면서 이용하는 것을 추천합니다.', password: '1234', views: 1, date: '2026-07-14', comments: [] },
-                    { id: 5, category: '관광지', title: '양화한강공원 자전거 코스 추천', author: '여행러버', content: '선유도 일원으로 넘어가는 양화나루 코스가 시원하게 자전거 타기에 참 멋집니다. 주말 정체 구간이 덜하고 노을 경관이 수려해 오후 6시 전후 시간대에 꼭 자전거 라이딩 가보시는 것을 추천드립니다.', password: '1234', views: 7, date: '2026-07-14', comments: [] }
-                ]);
-
-                // Region database directories (Seoul only)
-                const directoryLocations = [
-                    { name: '양화 한강공원', type: 'tourist', lat: 37.5385, lng: 126.8971, address: '서울 영등포구 노들로 110', phone: '02-3780-0581', desc: '선유도 공원과 맞닿은 수려한 한강 조망 명소이며 시원하게 잘 뚫린 한강 종주 자전거 코스 및 정원 쉼터가 있습니다.' },
-                    { name: '세종문화회관', type: 'culture', lat: 37.5724, lng: 126.9757, address: '서울 종로구 세종대로 175', phone: '02-399-1000', desc: '다양한 클래식, 뮤지컬, 현대 예술 전시가 연중 끊이지 않는 대한민국 대표 문화 예술 전시 극장 공간입니다.' },
-                    { name: '반포 한강 달빛축제', type: 'festival', lat: 37.5113, lng: 126.9967, address: '서울 서초구 반포동 한강공원', phone: '02-120', desc: '반포대교 무지개분수 연동 무대 아래 화려한 먹거리 푸드트럭 야시장 장터가 함께 서는 밤의 시그니처 축제 마당입니다.' },
-                    { name: '남산 둘레길 코스', type: 'course', lat: 37.5512, lng: 126.9882, address: '서울 중구 회현동 남산', phone: '02-3783-5900', desc: '도심 속 울창한 숲터널을 안전하고 산뜻하게 걸을 수 있는 가벼운 보행 전용 데크 산책로입니다.' },
-                    { name: '잠실 스포츠 복합단지', type: 'sports', lat: 37.5148, lng: 127.0729, address: '서울 송파구 올림픽로 25', phone: '02-2240-8800', desc: '야구, 축구, 마라톤 등 다양한 육상 구기 체험과 레포츠 활성화를 지원하는 메가 체육 단지 시설입니다.' },
-                    { name: '강남 비즈니스 관광 호텔', type: 'stay', lat: 37.5005, lng: 127.0362, address: '서울 강남구 테헤란로 12', phone: '02-555-0012', desc: '가성비와 청결함, 뛰어난 교통망을 지녀 출장맨 및 도심 호캉스 휴가족들이 즐겨 찾는 고성능 위생 휴식처입니다.' },
-                    { name: '동대문 평화패션 타운', type: 'shopping', lat: 37.5694, lng: 127.0097, address: '서울 중구 을지로6가', phone: '02-2262-0114', desc: '개성 넘치는 다양한 신상 의류들과 소품을 24시간 도소매 가격으로 가장 먼저 소비해볼 수 있는 한국의 패션 심장입니다.' }
-                ];
-
-                const activeInfoCategory = ref('all');
-                const infoSearch = ref('');
-                const infoCurrentPage = ref(1);
-                const infoPageSize = 20;
-                const selectedInfoItem = ref(null);
-
-                // API에서 image_url, firstimage, image 등의 필드가 내려오면 우선 사용합니다.
-                // 이미지가 없는 샘플 데이터는 카테고리별 기본 이미지를 사용합니다.
-                const locationFallbackImages = {
-                    tourist: 'https://images.unsplash.com/photo-1538485399081-7c8971a7a58b?auto=format&fit=crop&w=900&q=80',
-                    culture: 'https://images.unsplash.com/photo-1564399579883-451a5d44ec08?auto=format&fit=crop&w=900&q=80',
-                    festival: 'https://images.unsplash.com/photo-1501386761578-eac5c94b800a?auto=format&fit=crop&w=900&q=80',
-                    course: 'https://images.unsplash.com/photo-1551632811-561732d1e306?auto=format&fit=crop&w=900&q=80',
-                    sports: 'https://images.unsplash.com/photo-1461896836934-ffe607ba8211?auto=format&fit=crop&w=900&q=80',
-                    stay: 'https://images.unsplash.com/photo-1566073771259-6a8506099945?auto=format&fit=crop&w=900&q=80',
-                    shopping: 'https://images.unsplash.com/photo-1441986300917-64674bd600d8?auto=format&fit=crop&w=900&q=80'
-                };
-
-                // Board and Community variables
-                const boardFilter = ref('all');
-                const boardSearch = ref('');
-                const boardCurrentPage = ref(1);
-                const boardPageSize = 10;
-                const currentPost = ref(null);
-                const isWriting = ref(false);
-                const isEditing = ref(false);
-                const form = ref({
-                    id: null,
-                    category: '관광지',
-                    author: '',
-                    title: '',
-                    content: '',
-                    password: ''
-                });
-
-                const commentForm = ref({
-                    author: '',
-                    content: '',
-                    password: ''
-                });
-
-                const passwordPrompt = ref({
-                    show: false,
-                    action: '',
-                    postId: null,
-                    commentId: null,
-                    passwordInput: '',
-                    error: ''
-                });
-
-                const selectedLocationName = ref('');
-
-                // Kakao map state. Replace this value with the JavaScript key issued in Kakao Developers.
-                const KAKAO_MAP_APP_KEY = 'YOUR_KAKAO_JAVASCRIPT_KEY';
-                const mapCategory = ref('tourist');
-                const mapSetupRequired = ref(KAKAO_MAP_APP_KEY === 'YOUR_KAKAO_JAVASCRIPT_KEY');
-
-                const filteredMapLocations = computed(() => {
-                    return directoryLocations.filter(item => item.type === mapCategory.value);
-                });
-
-                // Filter items according to categories and search
-                const filteredInfoItems = computed(() => {
-                    const keyword = infoSearch.value.trim().toLowerCase();
-
-                    return directoryLocations.filter(item => {
-                        const catMatch = activeInfoCategory.value === 'all' || item.type === activeInfoCategory.value;
-                        const searchableText = [item.name, item.address, item.desc]
-                            .filter(Boolean)
-                            .join(' ')
-                            .toLowerCase();
-                        const searchMatch = !keyword || searchableText.includes(keyword);
-                        return catMatch && searchMatch;
-                    });
-                });
-
-                const infoTotalPages = computed(() => {
-                    return Math.max(1, Math.ceil(filteredInfoItems.value.length / infoPageSize));
-                });
-
-                const paginatedInfoItems = computed(() => {
-                    const start = (infoCurrentPage.value - 1) * infoPageSize;
-                    return filteredInfoItems.value.slice(start, start + infoPageSize);
-                });
-
-                watch([activeInfoCategory, infoSearch], () => {
-                    infoCurrentPage.value = 1;
-                });
-
-                // Filtered posts for community search
-                const filteredBoardPosts = computed(() => {
-                    const keyword = boardSearch.value.trim().toLowerCase();
-
-                    return samplePosts.value.filter(post => {
-                        const catKey = categories.find(c => c.id === boardFilter.value)?.name;
-                        const catMatch = boardFilter.value === 'all' || post.category === catKey;
-                        const searchableText = [post.title, post.content, post.author]
-                            .filter(Boolean)
-                            .join(' ')
-                            .toLowerCase();
-                        const searchMatch = !keyword || searchableText.includes(keyword);
-                        return catMatch && searchMatch;
-                    });
-                });
-
-                const boardTotalPages = computed(() => {
-                    return Math.max(1, Math.ceil(filteredBoardPosts.value.length / boardPageSize));
-                });
-
-                const paginatedBoardPosts = computed(() => {
-                    const start = (boardCurrentPage.value - 1) * boardPageSize;
-                    return filteredBoardPosts.value.slice(start, start + boardPageSize);
-                });
-
-                watch([boardFilter, boardSearch], () => {
-                    boardCurrentPage.value = 1;
-                });
-
-                watch(boardTotalPages, (totalPages) => {
-                    if (boardCurrentPage.value > totalPages) {
-                        boardCurrentPage.value = totalPages;
-                    }
-                });
-
-                const setInfoCategory = (categoryId) => {
-                    activeInfoCategory.value = categoryId;
-                    infoCurrentPage.value = 1;
-                };
-
-                const applyInfoSearch = () => {
-                    infoCurrentPage.value = 1;
-                };
-
-                const goToInfoPage = (page) => {
-                    infoCurrentPage.value = Math.min(Math.max(page, 1), infoTotalPages.value);
-                    window.scrollTo({ top: 0, behavior: 'smooth' });
-                };
-
-                const goToBoardPage = (page) => {
-                    boardCurrentPage.value = Math.min(Math.max(page, 1), boardTotalPages.value);
-                };
-
-                const getLocationImage = (item) => {
-                    return item.image_url || item.imageUrl || item.firstimage || item.firstImage || item.image || locationFallbackImages[item.type] || locationFallbackImages.tourist;
-                };
-
-                const handleLocationImageError = (event) => {
-                    const fallback = locationFallbackImages.tourist;
-                    if (event.target.src !== fallback) {
-                        event.target.src = fallback;
-                    }
-                };
-
-                const openInfoModal = (item) => {
-                    selectedInfoItem.value = item;
-                };
-
-                const closeInfoModal = () => {
-                    selectedInfoItem.value = null;
-                };
-
-                const openKakaoMap = (item) => {
-                    if (!item) return;
-
-                    const placeName = encodeURIComponent(item.name || '장소');
-                    const lat = Number(item.lat);
-                    const lng = Number(item.lng);
-                    const hasCoordinates = Number.isFinite(lat) && Number.isFinite(lng);
-                    const url = hasCoordinates
-                        ? `https://map.kakao.com/link/map/${placeName},${lat},${lng}`
-                        : `https://map.kakao.com/link/search/${placeName}`;
-
-                    const popup = window.open(url, '_blank');
-                    if (popup) popup.opener = null;
-                };
-
-                // Quick Filter trigger on Home Screen
-                const filterByCategory = (catId) => {
-                    activeCategory.value = catId;
-                    activeInfoCategory.value = catId;
-                    infoCurrentPage.value = 1;
-                    activeTab.value = 'info';
-                };
-
-                const getCategoryName = (typeId) => {
-                    return categories.find(c => c.id === typeId)?.name || '';
-                };
-
-                const getCategoryIcon = (typeId) => {
-                    return categories.find(c => c.id === typeId)?.icon || 'fa-solid fa-map-pin';
-                };
-
-                const changeTab = (tabId) => {
-                    activeTab.value = tabId;
-                    isWriting.value = false;
-                    currentPost.value = null;
-                    selectedInfoItem.value = null;
-                    if (tabId === 'map') {
-                        nextTick(() => {
-                            initKakaoMap();
-                        });
-                    }
-                };
-
-                const viewRecentPost = (post) => {
-                    currentPost.value = post;
-                    isWriting.value = false;
-                    activeTab.value = 'board';
-                };
-
-                const startWriting = () => {
-                    isWriting.value = true;
-                    isEditing.value = false;
-                    form.value = { id: null, category: '관광지', author: '', title: '', content: '', password: '' };
-                };
-
-                const viewPost = (post) => {
-                    currentPost.value = post;
-                    post.views++;
-                    isWriting.value = false;
-                };
-
-                const backToList = () => {
-                    currentPost.value = null;
-                    isWriting.value = false;
-                };
-
-                const cancelWriting = () => {
-                    isWriting.value = false;
-                    isEditing.value = false;
-                };
-
-                const savePost = () => {
-                    const f = form.value;
-                    if (!f.title.trim() || !f.content.trim() || !f.author.trim() || !f.password.trim()) {
-                        alert('모든 입력란 및 비밀번호를 명확히 기재하십시오.');
-                        return;
-                    }
-
-                    if (isEditing.value) {
-                        const index = samplePosts.value.findIndex(p => p.id === f.id);
-                        if (index !== -1) {
-                            samplePosts.value[index].title = f.title;
-                            samplePosts.value[index].content = f.content;
-                            samplePosts.value[index].category = f.category;
-                            samplePosts.value[index].author = f.author;
-                            currentPost.value = samplePosts.value[index];
-                        }
-                        isEditing.value = false;
-                        isWriting.value = false;
-                    } else {
-                        const newId = samplePosts.value.length > 0 ? Math.max(...samplePosts.value.map(p => p.id)) + 1 : 1;
-                        const newPost = {
-                            id: newId,
-                            category: f.category,
-                            title: f.title,
-                            content: f.content,
-                            author: f.author,
-                            password: f.password,
-                            views: 0,
-                            date: new Date().toISOString().split('T')[0],
-                            comments: []
-                        };
-                        samplePosts.value.unshift(newPost);
-                        isWriting.value = false;
-                    }
-                };
-
-                const addComment = () => {
-                    const cf = commentForm.value;
-                    if (!cf.author.trim() || !cf.content.trim() || !cf.password.trim()) {
-                        alert('댓글 입력란을 확인해 주십시오.');
-                        return;
-                    }
-                    if (!currentPost.value.comments) {
-                        currentPost.value.comments = [];
-                    }
-                    const newId = currentPost.value.comments.length > 0 ? Math.max(...currentPost.value.comments.map(c => c.id)) + 1 : 1;
-                    currentPost.value.comments.push({
-                        id: newId,
-                        author: cf.author,
-                        content: cf.content,
-                        password: cf.password,
-                        date: new Date().toISOString().split('T')[0]
-                    });
-                    commentForm.value = { author: '', content: '', password: '' };
-                };
-
-                const triggerPasswordModal = (action, postId, commentId = null) => {
-                    passwordPrompt.value = {
-                        show: true,
-                        action: action,
-                        postId: postId,
-                        commentId: commentId,
-                        passwordInput: '',
-                        error: ''
-                    };
-                };
-
-                const closePasswordModal = () => {
-                    passwordPrompt.value = { show: false, action: '', postId: null, commentId: null, passwordInput: '', error: '' };
-                };
-
-                const verifyPassword = () => {
-                    const prompt = passwordPrompt.value;
-                    const post = samplePosts.value.find(p => p.id === prompt.postId);
-                    if (!post) {
-                        closePasswordModal();
-                        return;
-                    }
-
-                    if (prompt.action === 'edit_post') {
-                        if (post.password === prompt.passwordInput) {
-                            form.value = {
-                                id: post.id,
-                                category: post.category,
-                                author: post.author,
-                                title: post.title,
-                                content: post.content,
-                                password: post.password
-                            };
-                            isWriting.value = true;
-                            isEditing.value = true;
-                            closePasswordModal();
-                        } else {
-                            prompt.error = '비밀번호가 일치하지 않습니다.';
-                        }
-                    } else if (prompt.action === 'delete_post') {
-                        if (post.password === prompt.passwordInput) {
-                            samplePosts.value = samplePosts.value.filter(p => p.id !== prompt.postId);
-                            currentPost.value = null;
-                            closePasswordModal();
-                        } else {
-                            prompt.error = '비밀번호가 일치하지 않습니다.';
-                        }
-                    } else if (prompt.action === 'delete_comment') {
-                        const comment = post.comments.find(c => c.id === prompt.commentId);
-                        if (comment && comment.password === prompt.passwordInput) {
-                            post.comments = post.comments.filter(c => c.id !== prompt.commentId);
-                            closePasswordModal();
-                        } else {
-                            prompt.error = '비밀번호가 일치하지 않습니다.';
-                        }
-                    }
-                };
-
-                // Kakao Maps JavaScript API integration
-                let mapInstance = null;
-                let markerClusterer = null;
-                let mapMarkers = [];
-                let activeInfoWindow = null;
-                let kakaoSdkPromise = null;
-
-                // LocalHub의 테라코타 포인트 컬러에 맞춘 Kakao 지도 마커
-                const TERRACOTTA_MARKER_SVG = `
-                    <svg xmlns="http://www.w3.org/2000/svg" width="38" height="50" viewBox="0 0 38 50">
-                        <defs>
-                            <filter id="shadow" x="-30%" y="-20%" width="160%" height="170%">
-                                <feDropShadow dx="0" dy="3" stdDeviation="2.2" flood-color="#5c5243" flood-opacity="0.28"/>
-                            </filter>
-                        </defs>
-                        <path filter="url(#shadow)" fill="#91573d" d="M19 1.5C9.7 1.5 2.2 9 2.2 18.3c0 12.5 16.8 29.9 16.8 29.9s16.8-17.4 16.8-29.9C35.8 9 28.3 1.5 19 1.5z"/>
-                        <circle cx="19" cy="18.5" r="7.2" fill="#fdfcf7"/>
-                        <circle cx="19" cy="18.5" r="3.2" fill="#d0bfa7"/>
-                    </svg>`;
-                const TERRACOTTA_MARKER_SRC = `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(TERRACOTTA_MARKER_SVG)}`;
-
-                const loadKakaoMapsSdk = () => {
-                    if (window.kakao?.maps) {
-                        return Promise.resolve();
-                    }
-
-                    if (mapSetupRequired.value) {
-                        return Promise.reject(new Error('Kakao Maps JavaScript key is not configured.'));
-                    }
-
-                    if (kakaoSdkPromise) return kakaoSdkPromise;
-
-                    kakaoSdkPromise = new Promise((resolve, reject) => {
-                        const script = document.createElement('script');
-                        script.src = `https://dapi.kakao.com/v2/maps/sdk.js?appkey=${KAKAO_MAP_APP_KEY}&libraries=clusterer&autoload=false`;
-                        script.async = true;
-                        script.onload = () => {
-                            if (!window.kakao?.maps) {
-                                reject(new Error('Kakao Maps SDK failed to initialize.'));
-                                return;
-                            }
-                            window.kakao.maps.load(resolve);
-                        };
-                        script.onerror = () => reject(new Error('Kakao Maps SDK could not be loaded.'));
-                        document.head.appendChild(script);
-                    });
-
-                    return kakaoSdkPromise;
-                };
-
-                const initKakaoMap = async () => {
-                    if (mapSetupRequired.value) return;
-
-                    try {
-                        await loadKakaoMapsSdk();
-
-                        if (!mapInstance) {
-                            const container = document.getElementById('map-container');
-                            mapInstance = new kakao.maps.Map(container, {
-                                center: new kakao.maps.LatLng(37.5665, 126.9780),
-                                level: 8
-                            });
-
-                            markerClusterer = new kakao.maps.MarkerClusterer({
-                                map: mapInstance,
-                                averageCenter: true,
-                                minLevel: 7,
-                                disableClickZoom: false,
-                                calculator: [10, 50, 100],
-                                styles: [
-                                    {
-                                        width: '38px', height: '38px',
-                                        background: 'rgba(145, 87, 61, 0.92)',
-                                        border: '3px solid rgba(255,255,255,0.92)',
-                                        borderRadius: '50%', color: '#fff',
-                                        textAlign: 'center', fontWeight: '800',
-                                        lineHeight: '32px',
-                                        boxShadow: '0 5px 15px rgba(145, 87, 61, 0.28)'
-                                    },
-                                    {
-                                        width: '44px', height: '44px',
-                                        background: 'rgba(145, 87, 61, 0.94)',
-                                        border: '3px solid rgba(255,255,255,0.92)',
-                                        borderRadius: '50%', color: '#fff',
-                                        textAlign: 'center', fontWeight: '800',
-                                        lineHeight: '38px',
-                                        boxShadow: '0 5px 16px rgba(145, 87, 61, 0.30)'
-                                    },
-                                    {
-                                        width: '50px', height: '50px',
-                                        background: 'rgba(122, 71, 48, 0.94)',
-                                        border: '3px solid rgba(255,255,255,0.92)',
-                                        borderRadius: '50%', color: '#fff',
-                                        textAlign: 'center', fontWeight: '800',
-                                        lineHeight: '44px',
-                                        boxShadow: '0 6px 18px rgba(122, 71, 48, 0.32)'
-                                    },
-                                    {
-                                        width: '56px', height: '56px',
-                                        background: 'rgba(92, 82, 67, 0.95)',
-                                        border: '3px solid rgba(255,255,255,0.92)',
-                                        borderRadius: '50%', color: '#fff',
-                                        textAlign: 'center', fontWeight: '800',
-                                        lineHeight: '50px',
-                                        boxShadow: '0 7px 20px rgba(92, 82, 67, 0.34)'
-                                    }
-                                ]
-                            });
-                        } else {
-                            mapInstance.relayout();
-                        }
-
-                        renderKakaoMarkers();
-                    } catch (error) {
-                        console.error(error);
-                        mapSetupRequired.value = true;
-                    }
-                };
-
-                const clearKakaoMarkers = () => {
-                    if (activeInfoWindow) {
-                        activeInfoWindow.close();
-                        activeInfoWindow = null;
-                    }
-                    if (markerClusterer) markerClusterer.clear();
-                    mapMarkers.forEach(marker => marker.setMap(null));
-                    mapMarkers = [];
-                };
-
-                const createInfoWindowContent = (loc) => `
-                    <div class="kakao-map-info">
-                        <span class="kakao-map-info__category">${getCategoryName(loc.type)}</span>
-                        <h4 class="kakao-map-info__title">${loc.name}</h4>
-                        <p class="kakao-map-info__description">${loc.desc}</p>
-                    </div>
-                `;
-
-                const renderKakaoMarkers = () => {
-                    if (!mapInstance || !window.kakao?.maps) return;
-
-                    clearKakaoMarkers();
-                    const locations = filteredMapLocations.value;
-                    if (locations.length === 0) return;
-
-                    const bounds = new kakao.maps.LatLngBounds();
-
-                    const markerImage = new kakao.maps.MarkerImage(
-                        TERRACOTTA_MARKER_SRC,
-                        new kakao.maps.Size(38, 50),
-                        { offset: new kakao.maps.Point(19, 50) }
-                    );
-
-                    mapMarkers = locations.map(loc => {
-                        const position = new kakao.maps.LatLng(loc.lat, loc.lng);
-                        const marker = new kakao.maps.Marker({
-                            position,
-                            title: loc.name,
-                            image: markerImage
-                        });
-
-                        kakao.maps.event.addListener(marker, 'click', () => {
-                            selectedLocationName.value = loc.name;
-                            if (activeInfoWindow) activeInfoWindow.close();
-                            activeInfoWindow = new kakao.maps.InfoWindow({
-                                content: createInfoWindowContent(loc),
-                                removable: true
-                            });
-                            activeInfoWindow.open(mapInstance, marker);
-                        });
-
-                        bounds.extend(position);
-                        return marker;
-                    });
-
-                    if (markerClusterer) {
-                        markerClusterer.addMarkers(mapMarkers);
-                    } else {
-                        mapMarkers.forEach(marker => marker.setMap(mapInstance));
-                    }
-
-                    if (locations.length === 1) {
-                        mapInstance.setCenter(bounds.getSouthWest());
-                        mapInstance.setLevel(5);
-                    } else {
-                        mapInstance.setBounds(bounds, 70, 70, 70, 70);
-                    }
-                };
-
-                const selectMapCategory = (categoryId) => {
-                    mapCategory.value = categoryId;
-                    selectedLocationName.value = '';
-                    nextTick(() => {
-                        if (mapInstance) {
-                            mapInstance.relayout();
-                            renderKakaoMarkers();
-                        } else {
-                            initKakaoMap();
-                        }
-                    });
-                };
-
-                const panToLocation = (loc) => {
-                    selectedLocationName.value = loc.name;
-                    mapCategory.value = loc.type;
-
-                    nextTick(async () => {
-                        await initKakaoMap();
-                        if (!mapInstance || !window.kakao?.maps) return;
-                        mapInstance.setCenter(new kakao.maps.LatLng(loc.lat, loc.lng));
-                        mapInstance.setLevel(4);
-                    });
-                };
-
-                const showOnMap = (item) => {
-                    mapCategory.value = item.type;
-                    activeTab.value = 'map';
-                    nextTick(async () => {
-                        await initKakaoMap();
-                        panToLocation(item);
-                    });
-                };
-
-                // AI Chatbot simulation state (FastAPI Rest API integrated structure)
-                const chatbot = ref({
-                    open: false,
-                    messages: [
-                        { role: 'assistant', text: '반갑습니다! LocalHub AI 안내봇입니다. 선택하신 지역의 축제 일정이나 숨겨진 명소 정보를 한국관광공사 수집 데이터 바탕으로 신속하고 친절하게 대답해 드리겠습니다!' }
-                    ],
-                    input: '',
-                    loading: false
-                });
-
-                const sendChat = async () => {
-                    const text = chatbot.value.input.trim();
-                    if (!text) return;
-
-                    chatbot.value.messages.push({ role: 'user', text: text });
-                    chatbot.value.input = '';
-                    chatbot.value.loading = true;
-
-                    // Automatically focus chat list bottom
-                    nextTick(() => {
-                        const box = document.querySelector('.overflow-y-auto.p-4.space-y-3.bg-beige-50\\/50');
-                        if (box) box.scrollTop = box.scrollHeight;
-                    });
-
-                    // Quick automated mock AI replies matching schema parameters
-                    let response = '';
-                    const lowered = text.toLowerCase();
-                    
-                    setTimeout(() => {
-                        if (lowered.includes('관광지') || lowered.includes('추천') || lowered.includes('어디')) {
-                            response = `📍 **서울의 대표 추천 스팟 안내해 드립니다:**
-
-1. **양화 한강공원**
-   - **설명:** 가족, 연인과 함께 주말 피크닉이나 산책에 안성맞춤인 친자연적인 명소입니다.
-2. **세종문화회관 및 둘레길**
-   - **설명:** 우수한 전망 모노레일 및 풍부한 산림 휴식처를 품고 있어 휴일 도심 근방 피서지로 큰 인기를 끕니다.`;
-                        } else if (lowered.includes('맛집') || lowered.includes('음식점') || lowered.includes('노포')) {
-                            response = `🍲 **서울 지역 최고 인기 노포 맛집 정보:**
-
-- **종로 피맛골 식당 골목**
-  - **시그니처:** 오래도록 한 자리를 지켜온 얼큰하고 진한 육수의 전통 국밥과 감칠맛 넘치는 묵은지 요리가 미식가들 사이에서 대단히 화제입니다.`;
-                        } else if (lowered.includes('축제') || lowered.includes('행사') || lowered.includes('일정')) {
-                            response = `🎉 **서울 연간 주요 축제 가이드:**
-
-- **반포 한강 달빛 광장 축제**
-  - **특징:** 다채로운 길거리 푸드 트럭과 화려한 야경 경관이 어우러져 매년 수만 명의 방문객이 방문하는 대표 로컬 이벤트입니다.`;
-                        } else {
-                            response = `💡 **서울 공공데이터에 기반해 분석을 제공합니다.**
-
-- 명소/관광지 추천 여부
-- 요일별 로컬 소울푸드 및 맛집 
-- 게시판 최근 글과 연계한 실시간 커뮤니티 동향 정보
-
-문의사항을 상세하게 입력하시면 정확한 AI 가이드를 제공해 드리겠습니다.`;
-                        }
-
-                        chatbot.value.messages.push({ role: 'assistant', text: response });
-                        chatbot.value.loading = false;
-
-                        nextTick(() => {
-                            const box = document.querySelector('.overflow-y-auto.p-4.space-y-3.bg-beige-50\\/50');
-                            if (box) box.scrollTop = box.scrollHeight;
-                        });
-                    }, 800);
-                };
-
-                return {
-                    currentRegion,
-                    tabs,
-                    activeTab,
-                    categories,
-                    activeCategory,
-                    samplePosts,
-                    directoryLocations,
-                    activeInfoCategory,
-                    infoSearch,
-                    infoCurrentPage,
-                    infoTotalPages,
-                    paginatedInfoItems,
-                    selectedInfoItem,
-                    boardFilter,
-                    boardSearch,
-                    boardCurrentPage,
-                    boardPageSize,
-                    boardTotalPages,
-                    paginatedBoardPosts,
-                    currentPost,
-                    isWriting,
-                    isEditing,
-                    form,
-                    commentForm,
-                    passwordPrompt,
-                    selectedLocationName,
-                    mapCategory,
-                    mapSetupRequired,
-                    filteredMapLocations,
-                    filteredInfoItems,
-                    filteredBoardPosts,
-                    setInfoCategory,
-                    applyInfoSearch,
-                    goToInfoPage,
-                    goToBoardPage,
-                    getLocationImage,
-                    handleLocationImageError,
-                    openInfoModal,
-                    closeInfoModal,
-                    openKakaoMap,
-                    filterByCategory,
-                    getCategoryName,
-                    getCategoryIcon,
-                    changeTab,
-                    viewRecentPost,
-                    startWriting,
-                    viewPost,
-                    backToList,
-                    cancelWriting,
-                    savePost,
-                    addComment,
-                    triggerPasswordModal,
-                    closePasswordModal,
-                    verifyPassword,
-                    selectMapCategory,
-                    panToLocation,
-                    showOnMap,
-                    chatbot,
-                    sendChat
-                };
-            }
-        }).mount('#app');
+const { createApp, ref, reactive, computed, onMounted, onUnmounted, nextTick, watch } = Vue
+const { createRouter, createWebHashHistory, useRoute, useRouter } = VueRouter
+
+const api = window.LocalHubAPI
+const categories = window.LocalHubData.categories
+const categoryName = (id) => categories.find((item) => item.id === id)?.name || id
+
+const AppHeader = {
+  setup() {
+    return { links: [
+      { to: '/', label: 'Home' },
+      { to: '/info', label: 'Local Info' },
+      { to: '/map', label: 'Map' },
+      { to: '/board', label: 'Community' },
+    ] }
+  },
+  template: `
+    <header class="w-full z-40 sticky top-0 bg-[#FAF7F0]/95 backdrop-blur-md border-b border-[#EFE6D5] shadow-sm">
+      <div class="max-w-6xl mx-auto px-4 sm:px-6 min-h-[76px] flex items-center justify-between gap-4">
+        <RouterLink to="/" class="flex items-center gap-3.5 shrink-0">
+          <span class="flex items-center gap-2 text-xl font-bold tracking-tight text-beige-900"><i class="fa-solid fa-location-pin text-accent-terracotta"></i> LocalHub</span>
+          <span class="hidden sm:inline-flex bg-beige-200/80 px-3 py-1 rounded-full border border-beige-300 text-xs text-beige-800 font-medium">Seoul</span>
+        </RouterLink>
+        <nav class="top-nav" aria-label="주요 메뉴">
+          <RouterLink v-for="link in links" :key="link.to" :to="link.to" class="top-nav-link" active-class="is-active" :exact-active-class="link.to === '/' ? 'is-active' : ''">{{ link.label }}</RouterLink>
+        </nav>
+      </div>
+    </header>`,
+}
+
+const StatusPanel = {
+  props: { type: { default: 'empty' }, title: { required: true }, message: { default: '' }, retry: { default: null } },
+  template: `
+    <div class="status-panel" :class="'status-panel--' + type" role="status">
+      <span class="status-panel__icon"><i v-if="type === 'loading'" class="fa-solid fa-spinner fa-spin"></i><i v-else-if="type === 'error'" class="fa-solid fa-triangle-exclamation"></i><i v-else class="fa-regular fa-folder-open"></i></span>
+      <h3>{{ title }}</h3><p v-if="message">{{ message }}</p>
+      <button v-if="type === 'error' && retry" class="btn-secondary mt-3" @click="retry">다시 시도</button>
+    </div>`,
+}
+
+const PaginationBar = {
+  props: ['page', 'totalPages'], emits: ['change'],
+  template: `<div class="flex items-center justify-center gap-4 pt-3"><button class="btn-secondary" :disabled="page <= 1" @click="$emit('change', page - 1)">이전</button><span class="text-xs text-beige-800/60 font-mono"><strong class="text-accent-terracotta">{{ page }}</strong> / {{ totalPages }}</span><button class="btn-secondary" :disabled="page >= totalPages" @click="$emit('change', page + 1)">다음</button></div>`,
+}
+
+const PasswordModal = {
+  props: { open: Boolean, title: { default: '비밀번호 확인' }, error: String, loading: Boolean }, emits: ['confirm', 'close'],
+  setup(props) { const password = ref(''); watch(() => props.open, (value) => { if (value) password.value = '' }); return { password } },
+  template: `
+    <div v-if="open" class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm px-4" @click.self="$emit('close')">
+      <form class="bg-white border border-beige-300 p-8 rounded-2xl max-w-sm w-full space-y-5 text-center shadow-2xl" @submit.prevent="$emit('confirm', password)">
+        <i class="fa-solid fa-lock text-accent-terracotta text-2xl"></i><div><h3 class="font-bold text-beige-900 font-serif">{{ title }}</h3><p class="text-xs text-beige-800/70 mt-2">작성할 때 설정한 비밀번호를 입력해 주세요.</p></div>
+        <input v-model="password" type="password" required autofocus placeholder="비밀번호 입력" class="form-input text-center"><p v-if="error" class="text-xs text-red-600">{{ error }}</p>
+        <div class="flex gap-2"><button class="btn-primary flex-1" :disabled="loading">{{ loading ? '확인 중…' : '확인' }}</button><button type="button" class="btn-secondary" @click="$emit('close')">취소</button></div>
+      </form>
+    </div>`,
+}
+
+const ChatWidget = {
+  setup() {
+    const open = ref(false), input = ref(''), loading = ref(false), error = ref(''), list = ref(null)
+    const messages = ref([{ role: 'assistant', text: '안녕하세요! LocalHub 지역정보 안내입니다. GPT API는 백엔드 연결 후 활성화됩니다.' }])
+    async function send() {
+      const text = input.value.trim(); if (!text || loading.value) return
+      messages.value.push({ role: 'user', text }); input.value = ''; loading.value = true; error.value = ''
+      try { const response = await api.chat(text, messages.value.slice(0, -1)); messages.value.push({ role: 'assistant', text: response.message || response.answer || response.content }) }
+      catch (err) { error.value = err.message }
+      finally { loading.value = false; await nextTick(); if (list.value) list.value.scrollTop = list.value.scrollHeight }
+    }
+    return { open, input, loading, error, list, messages, send }
+  },
+  template: `
+    <button class="chat-fab" aria-label="지역정보 챗봇 열기" @click="open = !open"><i :class="open ? 'fa-solid fa-xmark' : 'fa-solid fa-comment-dots'"></i></button>
+    <section v-if="open" class="chat-panel" aria-label="LocalHub 챗봇"><header><div><strong>LocalHub Guide</strong><p>GPT API 연결 준비 완료</p></div><button @click="open = false"><i class="fa-solid fa-xmark"></i></button></header>
+      <div ref="list" class="chat-messages"><div v-for="(message, index) in messages" :key="index" class="chat-message" :class="'chat-message--' + message.role">{{ message.text }}</div><div v-if="loading" class="chat-message chat-message--assistant"><i class="fa-solid fa-ellipsis fa-beat-fade"></i></div><p v-if="error" class="text-xs text-red-600 text-center">{{ error }}</p></div>
+      <form class="chat-input" @submit.prevent="send"><input v-model="input" placeholder="서울 지역정보를 물어보세요"><button :disabled="loading"><i class="fa-solid fa-paper-plane"></i></button></form>
+    </section>`,
+}
+
+const HomeView = {
+  components: { StatusPanel },
+  setup() {
+    const posts = ref([]), loading = ref(true), error = ref('')
+    async function load() { loading.value = true; error.value = ''; try { posts.value = (await api.getPosts({ size: 5 })).items } catch (err) { error.value = err.message } finally { loading.value = false } }
+    onMounted(load); return { categories, posts, loading, error, load }
+  },
+  template: `
+    <section class="space-y-12"><div class="hero-card"><span class="eyebrow">PUBLIC DATA · COMMUNITY</span><h1>서울의 모든 지역정보를<br class="hidden sm:block"> 한곳에서 만나요</h1><p>한국관광공사 공공데이터 기반 · 익명 커뮤니티 · AI 지역정보 챗봇</p><div class="flex flex-col sm:flex-row gap-3"><RouterLink to="/info" class="btn-primary">지역정보 둘러보기</RouterLink><RouterLink to="/board" class="btn-secondary">커뮤니티 가기</RouterLink></div></div>
+      <div class="space-y-5"><h2 class="section-title">카테고리</h2><div class="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-3"><RouterLink v-for="cat in categories" :key="cat.id" :to="{ path: '/info', query: { category: cat.id } }" class="category-btn px-4 py-4 rounded-xl text-center flex flex-col gap-2"><i :class="cat.icon" class="text-accent-terracotta"></i><span class="text-sm font-semibold">{{ cat.name }}</span></RouterLink></div></div>
+      <div class="space-y-5"><div class="flex justify-between items-center"><h2 class="section-title">최근 게시글</h2><RouterLink to="/board" class="text-xs text-accent-terracotta">전체보기 →</RouterLink></div><StatusPanel v-if="loading" type="loading" title="최근 게시글을 불러오는 중입니다."/><StatusPanel v-else-if="error" type="error" title="게시글을 불러오지 못했습니다." :message="error" :retry="load"/><StatusPanel v-else-if="!posts.length" title="아직 게시글이 없습니다." message="첫 지역 소식을 공유해 보세요."/><div v-else class="space-y-3"><RouterLink v-for="post in posts" :key="post.id" :to="'/board/' + post.id" class="post-row"><span class="tag">{{ post.category }}</span><strong>{{ post.title }}</strong><span class="ml-auto text-xs text-beige-800/60">{{ post.author }}</span></RouterLink></div></div>
+    </section>`,
+}
+
+const LocalInfoView = {
+  components: { StatusPanel, PaginationBar },
+  setup() {
+    const route = useRoute(), router = useRouter(), locations = ref([]), loading = ref(true), error = ref(''), selected = ref(null)
+    const category = ref(route.query.category || 'all'), search = ref(route.query.search || ''), page = ref(1), pageSize = 20
+    const filtered = computed(() => locations.value.filter((item) => (category.value === 'all' || item.type === category.value) && (!search.value.trim() || `${item.name} ${item.address} ${item.desc}`.toLowerCase().includes(search.value.trim().toLowerCase()))))
+    const totalPages = computed(() => Math.max(1, Math.ceil(filtered.value.length / pageSize)))
+    const paged = computed(() => filtered.value.slice((page.value - 1) * pageSize, page.value * pageSize))
+    async function load() { loading.value = true; error.value = ''; try { locations.value = await api.getLocations() } catch (err) { error.value = err.message } finally { loading.value = false } }
+    function apply() { page.value = 1; router.replace({ query: { ...(category.value !== 'all' && { category: category.value }), ...(search.value && { search: search.value }) } }) }
+    function setCategory(value) { category.value = value; apply() }
+    function openMap(item) { window.open(`https://map.kakao.com/link/map/${encodeURIComponent(item.name)},${item.lat},${item.lng}`, '_blank', 'noopener,noreferrer') }
+    onMounted(load); return { categories, categoryName, loading, error, selected, category, search, page, filtered, paged, totalPages, load, apply, setCategory, openMap }
+  },
+  template: `
+    <section class="space-y-6"><div><span class="eyebrow">SEOUL DIRECTORY</span><h1 class="page-title">지역정보</h1><p class="page-description">카테고리별 서울 관광정보를 확인하세요. <strong class="text-accent-terracotta">표시 {{ filtered.length }}개</strong></p></div>
+      <div class="flex flex-wrap gap-2"><button class="filter-pill" :class="{ active: category === 'all' }" @click="setCategory('all')">전체</button><button v-for="cat in categories" :key="cat.id" class="filter-pill" :class="{ active: category === cat.id }" @click="setCategory(cat.id)">{{ cat.name }}</button></div>
+      <form class="search-bar" @submit.prevent="apply"><i class="fa-solid fa-magnifying-glass"></i><input v-model="search" placeholder="장소명 · 주소 검색"><button>검색</button></form>
+      <StatusPanel v-if="loading" type="loading" title="지역정보를 불러오는 중입니다."/><StatusPanel v-else-if="error" type="error" title="지역정보를 불러오지 못했습니다." :message="error" :retry="load"/><StatusPanel v-else-if="!paged.length" title="검색 결과가 없습니다." message="다른 검색어나 카테고리를 선택해 보세요."/>
+      <div v-else class="grid sm:grid-cols-2 lg:grid-cols-4 gap-5"><article v-for="item in paged" :key="item.id" class="location-card" @click="selected = item"><img :src="item.image" :alt="item.name"><div><span class="tag">{{ categoryName(item.type) }}</span><h2>{{ item.name }}</h2><p><i class="fa-solid fa-location-dot"></i> {{ item.address }}</p></div></article></div>
+      <PaginationBar v-if="filtered.length" :page="page" :total-pages="totalPages" @change="page = $event"/>
+      <div v-if="selected" class="modal-backdrop" @click.self="selected = null"><article class="modal-card"><button class="modal-close" @click="selected = null"><i class="fa-solid fa-xmark"></i></button><img :src="selected.image" :alt="selected.name"><span class="tag">{{ categoryName(selected.type) }}</span><h2 class="section-title mt-3">{{ selected.name }}</h2><p class="text-sm text-beige-800 mt-3">{{ selected.desc }}</p><dl class="info-list"><div><dt>주소</dt><dd>{{ selected.address }}</dd></div></dl><button class="btn-primary w-full mt-5" @click="openMap(selected)">카카오맵에서 보기</button></article></div>
+    </section>`,
+}
+
+const MapView = {
+  components: { StatusPanel },
+  setup() {
+    const locations = ref([]), category = ref('tourist'), loading = ref(true), error = ref(''), selected = ref(null), mapElement = ref(null)
+    const filtered = computed(() => locations.value.filter((item) => item.type === category.value))
+    let map = null, markers = [], infoWindow = null, sdkPromise = null
+    function loadKakaoSdk() {
+      if (window.kakao?.maps) return new Promise((resolve) => window.kakao.maps.load(resolve))
+      if (sdkPromise) return sdkPromise
+      const key = window.LOCALHUB_CONFIG?.KAKAO_MAP_KEY
+      if (!key) return Promise.reject(new Error('카카오맵 JavaScript 키가 설정되지 않았습니다.'))
+      sdkPromise = new Promise((resolve, reject) => { const script = document.createElement('script'); script.id = 'kakao-map-sdk'; script.async = true; script.src = `https://dapi.kakao.com/v2/maps/sdk.js?appkey=${key}&autoload=false`; script.onload = () => window.kakao.maps.load(resolve); script.onerror = () => { script.remove(); sdkPromise = null; reject(new Error('카카오맵 SDK를 불러오지 못했습니다. 등록 도메인과 키를 확인해 주세요.')) }; document.head.appendChild(script) })
+      return sdkPromise
+    }
+    function clearMarkers() { markers.forEach((marker) => marker.setMap(null)); markers = []; infoWindow?.close() }
+    function showInfo(item, marker) {
+      selected.value = item; const content = document.createElement('div'); content.className = 'kakao-map-info'
+      const label = document.createElement('span'); label.className = 'kakao-map-info__category'; label.textContent = categoryName(item.type)
+      const title = document.createElement('h3'); title.className = 'kakao-map-info__title'; title.textContent = item.name
+      const address = document.createElement('p'); address.className = 'kakao-map-info__description'; address.textContent = item.address
+      content.append(label, title, address); infoWindow?.close(); infoWindow = new window.kakao.maps.InfoWindow({ content, removable: true }); infoWindow.open(map, marker)
+    }
+    function renderMarkers() {
+      if (!map || !window.kakao?.maps) return; clearMarkers(); selected.value = null; const bounds = new window.kakao.maps.LatLngBounds()
+      filtered.value.forEach((item) => { const position = new window.kakao.maps.LatLng(item.lat, item.lng); const marker = new window.kakao.maps.Marker({ map, position, title: item.name }); window.kakao.maps.event.addListener(marker, 'click', () => showInfo(item, marker)); markers.push(marker); bounds.extend(position) })
+      if (markers.length === 1) { map.setCenter(markers[0].getPosition()); map.setLevel(5) } else if (markers.length > 1) map.setBounds(bounds, 60, 60, 60, 60)
+    }
+    function selectLocation(item) { const marker = markers[filtered.value.findIndex((location) => location.id === item.id)]; if (!map || !marker) return; map.panTo(marker.getPosition()); map.setLevel(4); showInfo(item, marker) }
+    function openExternalMap(item) { window.open(`https://map.kakao.com/link/map/${encodeURIComponent(item.name)},${item.lat},${item.lng}`, '_blank', 'noopener,noreferrer') }
+    async function initialize() { loading.value = true; error.value = ''; try { const [items] = await Promise.all([api.getLocations(), loadKakaoSdk()]); locations.value = items; await nextTick(); map = new window.kakao.maps.Map(mapElement.value, { center: new window.kakao.maps.LatLng(37.5665, 126.978), level: 8 }); map.addControl(new window.kakao.maps.MapTypeControl(), window.kakao.maps.ControlPosition.TOPRIGHT); map.addControl(new window.kakao.maps.ZoomControl(), window.kakao.maps.ControlPosition.RIGHT) } catch (err) { error.value = err.message } finally { loading.value = false; await nextTick(); if (map) { map.relayout(); renderMarkers() } } }
+    watch(category, () => nextTick(renderMarkers)); onMounted(initialize); onUnmounted(clearMarkers)
+    return { categories, categoryName, category, loading, error, selected, mapElement, filtered, initialize, selectLocation, openExternalMap }
+  },
+  template: `
+    <section class="space-y-6"><div><span class="eyebrow">LOCATION MAP</span><h1 class="page-title">지도</h1><p class="page-description">카테고리별 서울 장소를 지도에서 확인하세요.</p></div><div class="flex flex-wrap gap-2"><button v-for="cat in categories" :key="cat.id" class="filter-pill" :class="{ active: category === cat.id }" @click="category = cat.id">{{ cat.name }}</button></div>
+      <StatusPanel v-if="loading" type="loading" title="카카오맵을 불러오는 중입니다."/><StatusPanel v-else-if="error" type="error" title="카카오맵을 표시할 수 없습니다." :message="error" :retry="initialize"/>
+      <div v-show="!loading && !error" class="map-layout"><div ref="mapElement" class="kakao-map-canvas" aria-label="서울 지역정보 지도"></div><aside class="map-list"><button v-for="item in filtered" :key="item.id" :class="{ active: selected?.id === item.id }" @click="selectLocation(item)"><span class="tag">{{ categoryName(item.type) }}</span><strong>{{ item.name }}</strong><small>{{ item.address }}</small><span class="map-list__external" @click.stop="openExternalMap(item)">카카오맵으로 열기 <i class="fa-solid fa-arrow-up-right-from-square"></i></span></button></aside></div>
+    </section>`,
+}
+
+const BoardListView = {
+  components: { StatusPanel, PaginationBar },
+  setup() {
+    const route = useRoute(), router = useRouter(), posts = ref([]), total = ref(0), loading = ref(true), error = ref('')
+    const search = ref(route.query.search || ''), category = ref(route.query.category || 'all'), page = ref(Number(route.query.page) || 1), pageSize = 10
+    const totalPages = computed(() => Math.max(1, Math.ceil(total.value / pageSize)))
+    async function load() { loading.value = true; error.value = ''; try { const data = await api.getPosts({ search: search.value, category: category.value, page: page.value, size: pageSize }); posts.value = data.items; total.value = data.total } catch (err) { error.value = err.message } finally { loading.value = false } }
+    function syncRoute() { router.replace({ query: { ...(search.value && { search: search.value }), ...(category.value !== 'all' && { category: category.value }), ...(page.value > 1 && { page: page.value }) } }) }
+    function apply() { page.value = 1; syncRoute(); load() }
+    function setCategory(value) { category.value = value; apply() }
+    function changePage(value) { page.value = value; syncRoute(); load() }
+    onMounted(load); return { categories, posts, loading, error, search, category, page, totalPages, load, apply, setCategory, changePage }
+  },
+  template: `
+    <section class="space-y-6"><div class="flex flex-col sm:flex-row sm:items-end justify-between gap-4"><div><span class="eyebrow">ANONYMOUS COMMUNITY</span><h1 class="page-title">지역 통합 소통방</h1><p class="page-description">서울의 지역정보와 경험을 자유롭게 공유하세요.</p></div><RouterLink to="/board/new" class="btn-primary shrink-0"><i class="fa-solid fa-pen"></i> 글쓰기</RouterLink></div>
+      <div class="board-category-scroll" aria-label="게시판 카테고리"><button class="board-category-pill" :class="{ active: category === 'all' }" @click="setCategory('all')">전체</button><button v-for="cat in categories" :key="cat.id" class="board-category-pill" :class="{ active: category === cat.name }" @click="setCategory(cat.name)">{{ cat.name }}</button></div>
+      <form class="search-bar" @submit.prevent="apply"><i class="fa-solid fa-magnifying-glass"></i><input v-model="search" placeholder="제목 · 내용 검색"><button>검색</button></form>
+      <StatusPanel v-if="loading" type="loading" title="게시글을 불러오는 중입니다."/><StatusPanel v-else-if="error" type="error" title="게시글을 불러오지 못했습니다." :message="error" :retry="load"/><StatusPanel v-else-if="!posts.length" title="조건에 맞는 게시글이 없습니다." message="검색 조건을 바꾸거나 첫 글을 작성해 보세요."/>
+      <div v-else class="board-table"><div class="board-table__head"><span>분류</span><span>제목</span><span>작성자</span></div><RouterLink v-for="post in posts" :key="post.id" :to="'/board/' + post.id" class="board-table__row"><span><span class="tag">{{ post.category }}</span></span><strong>{{ post.title }}</strong><span>{{ post.author }}</span></RouterLink></div><PaginationBar v-if="posts.length" :page="page" :total-pages="totalPages" @change="changePage"/>
+    </section>`,
+}
+
+const BoardFormView = {
+  components: { StatusPanel }, props: ['id'],
+  setup(props) {
+    const router = useRouter(), editing = Boolean(props.id), loading = ref(editing), saving = ref(false), error = ref(''), fieldError = ref('')
+    const form = reactive({ category: categories[0].name, author: '', title: '', content: '', password: '' })
+    async function load() { try { const password = form.password; Object.assign(form, await api.getPost(props.id)); form.password = password } catch (err) { error.value = err.message } finally { loading.value = false } }
+    async function submit() { fieldError.value = ''; error.value = ''; if (![form.author, form.title, form.content, form.password].every((value) => value.trim())) { fieldError.value = '모든 항목을 입력해 주세요.'; return } saving.value = true; try { const post = editing ? await api.updatePost(props.id, form) : await api.createPost(form); router.push('/board/' + post.id) } catch (err) { error.value = err.message } finally { saving.value = false } }
+    onMounted(() => { if (editing) { form.password = sessionStorage.getItem(`localhub_edit_password_${props.id}`) || ''; sessionStorage.removeItem(`localhub_edit_password_${props.id}`); load() } })
+    return { router, editing, loading, saving, error, fieldError, form, categories, submit }
+  },
+  template: `<StatusPanel v-if="loading" type="loading" title="게시글을 불러오는 중입니다."/><StatusPanel v-else-if="error && !form.title" type="error" title="게시글을 불러오지 못했습니다." :message="error"/><section v-else class="premium-card p-6 md:p-8 rounded-2xl space-y-6"><div><span class="eyebrow">COMMUNITY</span><h1 class="page-title">{{ editing ? '게시글 수정' : '게시글 작성' }}</h1></div><form class="space-y-5" @submit.prevent="submit"><div class="grid sm:grid-cols-2 gap-4"><label class="form-field"><span>카테고리</span><select v-model="form.category" class="form-input"><option v-for="cat in categories" :key="cat.id">{{ cat.name }}</option></select></label><label class="form-field"><span>익명 작성자</span><input v-model="form.author" class="form-input" maxlength="30" placeholder="닉네임"></label></div><label class="form-field"><span>제목</span><input v-model="form.title" class="form-input" maxlength="100" placeholder="제목을 입력해 주세요"></label><label class="form-field"><span>내용</span><textarea v-model="form.content" class="form-input min-h-52 resize-y" maxlength="5000" placeholder="지역정보와 경험을 적어 주세요."></textarea></label><label class="form-field max-w-sm"><span>수정용 비밀번호</span><input v-model="form.password" type="password" class="form-input" maxlength="12" placeholder="비밀번호"><small>수정과 삭제에 사용됩니다.</small></label><p v-if="fieldError || error" class="form-error">{{ fieldError || error }}</p><div class="flex gap-3"><button class="btn-primary" :disabled="saving">{{ saving ? '저장 중…' : (editing ? '수정 완료' : '등록') }}</button><button type="button" class="btn-secondary" @click="router.back()">취소</button></div></form></section>`,
+}
+
+const BoardDetailView = {
+  components: { StatusPanel, PasswordModal }, props: ['id'],
+  setup(props) {
+    const router = useRouter(), post = ref(null), loading = ref(true), error = ref(''), actionLoading = ref(false), commentError = ref('')
+    const comment = reactive({ author: '', content: '', password: '' }), prompt = reactive({ open: false, action: '', commentId: null, error: '' })
+    async function load() { loading.value = true; error.value = ''; try { post.value = await api.getPost(props.id) } catch (err) { error.value = err.message } finally { loading.value = false } }
+    async function addComment() { commentError.value = ''; if (![comment.author, comment.content, comment.password].every((value) => value.trim())) { commentError.value = '댓글의 모든 항목을 입력해 주세요.'; return } actionLoading.value = true; try { const created = await api.createComment(props.id, comment); post.value.comments = [...(post.value.comments || []), created]; Object.assign(comment, { author: '', content: '', password: '' }) } catch (err) { commentError.value = err.message } finally { actionLoading.value = false } }
+    function ask(action, commentId = null) { Object.assign(prompt, { open: true, action, commentId, error: '' }) }
+    function closePrompt() { prompt.open = false; prompt.error = '' }
+    async function confirm(password) { if (!password) { prompt.error = '비밀번호를 입력해 주세요.'; return } if (prompt.action === 'edit') { sessionStorage.setItem(`localhub_edit_password_${props.id}`, password); closePrompt(); router.push(`/board/${props.id}/edit`); return } actionLoading.value = true; prompt.error = ''; try { if (prompt.action === 'delete') { await api.deletePost(props.id, password); router.push('/board'); return } await api.deleteComment(props.id, prompt.commentId, password); post.value.comments = post.value.comments.filter((item) => String(item.id) !== String(prompt.commentId)); closePrompt() } catch (err) { prompt.error = err.message } finally { actionLoading.value = false } }
+    onMounted(load); return { router, post, loading, error, actionLoading, commentError, comment, prompt, load, addComment, ask, closePrompt, confirm }
+  },
+  template: `<StatusPanel v-if="loading" type="loading" title="게시글을 불러오는 중입니다."/><StatusPanel v-else-if="error" type="error" title="게시글을 불러오지 못했습니다." :message="error" :retry="load"/><section v-else class="space-y-6"><RouterLink to="/board" class="btn-secondary"><i class="fa-solid fa-chevron-left"></i> 글 목록</RouterLink><article class="premium-card p-6 md:p-8 rounded-2xl space-y-6"><span class="tag">{{ post.category }}</span><div class="border-b border-beige-300/60 pb-5 flex flex-col sm:flex-row sm:justify-between gap-4"><div><h1 class="text-2xl font-black font-serif">{{ post.title }}</h1><p class="text-xs text-beige-800/70 mt-2">{{ post.author }} · {{ post.date }}</p></div><div class="flex gap-2"><button class="btn-secondary" @click="ask('edit')">수정</button><button class="btn-danger" @click="ask('delete')">삭제</button></div></div><p class="whitespace-pre-line leading-8 text-sm min-h-40">{{ post.content }}</p></article><div class="space-y-4"><h2 class="section-title text-lg"><i class="fa-regular fa-comment text-accent-terracotta"></i> 댓글 {{ post.comments?.length || 0 }}</h2><form class="comment-form" @submit.prevent="addComment"><div class="grid sm:grid-cols-2 gap-3"><input v-model="comment.author" class="form-input" placeholder="작성자"><input v-model="comment.password" type="password" class="form-input" placeholder="비밀번호"></div><div class="flex gap-2"><input v-model="comment.content" class="form-input" placeholder="건전한 댓글을 입력해 주세요."><button class="btn-primary shrink-0" :disabled="actionLoading">등록</button></div><p v-if="commentError" class="form-error">{{ commentError }}</p></form><StatusPanel v-if="!post.comments?.length" title="아직 댓글이 없습니다." message="첫 댓글을 남겨 보세요."/><div v-else class="space-y-3"><article v-for="item in post.comments" :key="item.id" class="comment-row"><div><strong>{{ item.author }}</strong><small>{{ item.date }}</small><p>{{ item.content }}</p></div><button aria-label="댓글 삭제" @click="ask('deleteComment', item.id)"><i class="fa-solid fa-trash-can"></i></button></article></div></div><PasswordModal :open="prompt.open" :error="prompt.error" :loading="actionLoading" :title="prompt.action === 'deleteComment' ? '댓글 삭제' : prompt.action === 'delete' ? '게시글 삭제' : '게시글 수정'" @confirm="confirm" @close="closePrompt"/></section>`,
+}
+
+const NotFoundView = { components: { StatusPanel }, template: `<StatusPanel title="페이지를 찾을 수 없습니다." message="주소를 확인하거나 홈으로 이동해 주세요."/><div class="text-center mt-4"><RouterLink to="/" class="btn-primary">홈으로</RouterLink></div>` }
+
+const routes = [
+  { path: '/', component: HomeView }, { path: '/info', component: LocalInfoView }, { path: '/map', component: MapView },
+  { path: '/board', component: BoardListView }, { path: '/board/new', component: BoardFormView },
+  { path: '/board/:id/edit', component: BoardFormView, props: true }, { path: '/board/:id', component: BoardDetailView, props: true },
+  { path: '/:pathMatch(.*)*', component: NotFoundView },
+]
+const router = createRouter({ history: createWebHashHistory(), routes, scrollBehavior: () => ({ top: 0 }) })
+const App = { components: { AppHeader, ChatWidget }, template: `<div class="relative min-h-screen flex flex-col"><AppHeader/><main class="flex-grow max-w-6xl w-full mx-auto px-4 sm:px-6 py-8 md:py-10"><RouterView/></main><footer class="border-t border-beige-300/60 py-6 text-center text-xs text-beige-800/60">LocalHub · 공공데이터 기반 지역정보 커뮤니티</footer><ChatWidget/></div>` }
+
+createApp(App).use(router).mount('#app')

@@ -1,0 +1,8 @@
+node_modules/
+dist/
+.npm-cache/
+.env
+.env.*.local
+assets/js/config.local.js
+*.log
+.DS_Store
