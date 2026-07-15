@@ -249,3 +249,27 @@ section.space-y-12:has(> .home-intro)>.home-intro{order:3}
 .weather-card{order:1}
 .festival-schedule-card{order:2}
 @media(max-width:900px){section.space-y-12:has(> .home-intro){gap:2rem}.home-empty-grid{grid-template-columns:1fr!important}.weather-card{order:1}.festival-schedule-card{order:2}}
+
+/* This week's festival title and scrollable schedule */
+.festival-schedule-header h2{gap:0!important;font-size:0!important}
+.festival-schedule-header h2 i{margin-right:.55rem;font-size:1.05rem!important}
+.festival-schedule-header h2::after{content:"이번 주 축제 일정";color:#382b25;font:700 1.05rem/1.35 "Noto Serif KR",serif}
+.festival-schedule-list{max-height:22.5rem;min-height:0;overflow-y:auto;overscroll-behavior:contain;padding-right:.35rem;scrollbar-gutter:stable}
+.festival-schedule-item{flex:0 0 auto}
+.festival-schedule-list::-webkit-scrollbar{width:.42rem}
+.festival-schedule-list::-webkit-scrollbar-track{border-radius:999px;background:#f5eee2}
+.festival-schedule-list::-webkit-scrollbar-thumb{border-radius:999px;background:#c99578}
+.festival-schedule-list{scrollbar-color:#c99578 #f5eee2;scrollbar-width:thin}
+
+/* Remove the home introduction hero */
+.home-intro{display:none!important}
+
+/* Keep title/address on the left and place the event period on the right */
+.festival-schedule-item{grid-template-columns:minmax(0,1fr) 14.5rem auto!important}
+.festival-schedule-item>div{grid-column:1;grid-row:1}
+.festival-schedule-item time{grid-column:2;grid-row:1;width:14.5rem;height:3.25rem!important;min-height:3.25rem!important;padding:.4rem .65rem;gap:0}
+.festival-schedule-item time small{display:none}
+.festival-schedule-item time strong{color:#8a7c72!important;font-size:.76rem!important;font-weight:400!important;white-space:nowrap}
+.festival-schedule-item>i{grid-column:3;grid-row:1}
+.festival-schedule-item p{width:auto;max-width:100%;padding:0;border:0;background:transparent}
+@media(max-width:700px){.festival-schedule-item{grid-template-columns:minmax(0,1fr) auto!important}.festival-schedule-item>div{grid-column:1;grid-row:1}.festival-schedule-item>i{grid-column:2;grid-row:1}.festival-schedule-item time{grid-column:1/3;grid-row:2;width:100%;height:2.45rem!important;min-height:2.45rem!important;flex-direction:row!important;gap:.45rem}}
