@@ -3,6 +3,7 @@ const { createRouter, createWebHashHistory, useRoute, useRouter } = VueRouter
 
 const api = window.LocalHubAPI
 const categories = window.LocalHubData.categories
+const placeCategories = categories.filter((item) => item.id !== 'course')
 const categoryName = (id) => categories.find((item) => item.id === id)?.name || id
 
 const AppHeader = {
@@ -96,22 +97,21 @@ const LocalInfoView = {
   setup() {
     const route = useRoute(), router = useRouter(), locations = ref([]), loading = ref(true), error = ref(''), selected = ref(null)
     const category = ref(route.query.category || 'all'), search = ref(route.query.search || ''), page = ref(1), pageSize = 20
-    const filtered = computed(() => locations.value.filter((item) => (category.value === 'all' || item.type === category.value) && (!search.value.trim() || `${item.name} ${item.address} ${item.desc}`.toLowerCase().includes(search.value.trim().toLowerCase()))))
-    const totalPages = computed(() => Math.max(1, Math.ceil(filtered.value.length / pageSize)))
-    const paged = computed(() => filtered.value.slice((page.value - 1) * pageSize, page.value * pageSize))
-    async function load() { loading.value = true; error.value = ''; try { locations.value = await api.getLocations() } catch (err) { error.value = err.message } finally { loading.value = false } }
-    function apply() { page.value = 1; router.replace({ query: { ...(category.value !== 'all' && { category: category.value }), ...(search.value && { search: search.value }) } }) }
+    const total = ref(0), totalPages = computed(() => Math.max(1, Math.ceil(total.value / pageSize)))
+    async function load() { loading.value = true; error.value = ''; try { const data = await api.getLocations({category:category.value,search:search.value,page:page.value});locations.value=data.items;total.value=data.total } catch (err) { error.value = err.message } finally { loading.value = false } }
+    function apply() { page.value = 1; router.replace({ query: { ...(category.value !== 'all' && { category: category.value }), ...(search.value && { search: search.value }) } });load() }
     function setCategory(value) { category.value = value; apply() }
     function openMap(item) { window.open(`https://map.kakao.com/link/map/${encodeURIComponent(item.name)},${item.lat},${item.lng}`, '_blank', 'noopener,noreferrer') }
-    onMounted(load); return { categories, categoryName, loading, error, selected, category, search, page, filtered, paged, totalPages, load, apply, setCategory, openMap }
+    function changePage(value){page.value=value;load()}
+    onMounted(load); return { categories: placeCategories, categoryName, loading, error, selected, category, search, page, total, locations, totalPages, load, apply, setCategory, changePage, openMap }
   },
   template: `
-    <section class="space-y-6"><div><span class="eyebrow">SEOUL DIRECTORY</span><h1 class="page-title">지역정보</h1><p class="page-description">카테고리별 서울 관광정보를 확인하세요. <strong class="text-accent-terracotta">표시 {{ filtered.length }}개</strong></p></div>
+    <section class="space-y-6"><div><span class="eyebrow">SEOUL DIRECTORY</span><h1 class="page-title">지역정보</h1><p class="page-description">카테고리별 서울 관광정보를 확인하세요. <strong class="text-accent-terracotta">총 {{ total.toLocaleString() }}개</strong></p></div>
       <div class="flex flex-wrap gap-2"><button class="filter-pill" :class="{ active: category === 'all' }" @click="setCategory('all')">전체</button><button v-for="cat in categories" :key="cat.id" class="filter-pill" :class="{ active: category === cat.id }" @click="setCategory(cat.id)">{{ cat.name }}</button></div>
       <form class="search-bar" @submit.prevent="apply"><i class="fa-solid fa-magnifying-glass"></i><input v-model="search" placeholder="장소명 · 주소 검색"><button>검색</button></form>
-      <StatusPanel v-if="loading" type="loading" title="지역정보를 불러오는 중입니다."/><StatusPanel v-else-if="error" type="error" title="지역정보를 불러오지 못했습니다." :message="error" :retry="load"/><StatusPanel v-else-if="!paged.length" title="검색 결과가 없습니다." message="다른 검색어나 카테고리를 선택해 보세요."/>
-      <div v-else class="grid sm:grid-cols-2 lg:grid-cols-4 gap-5"><article v-for="item in paged" :key="item.id" class="location-card" @click="selected = item"><img :src="item.image" :alt="item.name"><div><span class="tag">{{ categoryName(item.type) }}</span><h2>{{ item.name }}</h2><p><i class="fa-solid fa-location-dot"></i> {{ item.address }}</p></div></article></div>
-      <PaginationBar v-if="filtered.length" :page="page" :total-pages="totalPages" @change="page = $event"/>
+      <StatusPanel v-if="loading" type="loading" title="지역정보를 불러오는 중입니다."/><StatusPanel v-else-if="error" type="error" title="지역정보를 불러오지 못했습니다." :message="error" :retry="load"/><StatusPanel v-else-if="!locations.length" title="검색 결과가 없습니다." message="다른 검색어나 카테고리를 선택해 보세요."/>
+      <div v-else class="grid sm:grid-cols-2 lg:grid-cols-4 gap-5"><article v-for="item in locations" :key="item.id" class="location-card" @click="selected = item"><img :src="item.image" :alt="item.name"><div><span class="tag">{{ categoryName(item.type) }}</span><h2>{{ item.name }}</h2><p><i class="fa-solid fa-location-dot"></i> {{ item.address }}</p></div></article></div>
+      <PaginationBar v-if="locations.length" :page="page" :total-pages="totalPages" @change="changePage"/>
       <div v-if="selected" class="modal-backdrop" @click.self="selected = null"><article class="modal-card"><button class="modal-close" @click="selected = null"><i class="fa-solid fa-xmark"></i></button><img :src="selected.image" :alt="selected.name"><span class="tag">{{ categoryName(selected.type) }}</span><h2 class="section-title mt-3">{{ selected.name }}</h2><p class="text-sm text-beige-800 mt-3">{{ selected.desc }}</p><dl class="info-list"><div><dt>주소</dt><dd>{{ selected.address }}</dd></div></dl><button class="btn-primary w-full mt-5" @click="openMap(selected)">카카오맵에서 보기</button></article></div>
     </section>`,
 }
@@ -119,18 +119,19 @@ const LocalInfoView = {
 const MapView = {
   components: { StatusPanel },
   setup() {
-    const locations = ref([]), category = ref('tourist'), loading = ref(true), error = ref(''), selected = ref(null), mapElement = ref(null)
-    const filtered = computed(() => locations.value.filter((item) => item.type === category.value))
-    let map = null, markers = [], infoWindow = null, sdkPromise = null
+    const locations = ref([]), visibleLocations = ref([]), category = ref('tourist'), loading = ref(true), error = ref(''), selected = ref(null), mapElement = ref(null)
+    const filtered = computed(() => visibleLocations.value)
+    const seoulCenter = { lat: 37.5547, lng: 126.9707 }
+    let map = null, clusterer = null, markers = [], infoWindow = null, sdkPromise = null
     function loadKakaoSdk() {
       if (window.kakao?.maps) return new Promise((resolve) => window.kakao.maps.load(resolve))
       if (sdkPromise) return sdkPromise
       const key = window.LOCALHUB_CONFIG?.KAKAO_MAP_KEY
       if (!key) return Promise.reject(new Error('카카오맵 JavaScript 키가 설정되지 않았습니다.'))
-      sdkPromise = new Promise((resolve, reject) => { const script = document.createElement('script'); script.id = 'kakao-map-sdk'; script.async = true; script.src = `https://dapi.kakao.com/v2/maps/sdk.js?appkey=${key}&autoload=false`; script.onload = () => window.kakao.maps.load(resolve); script.onerror = () => { script.remove(); sdkPromise = null; reject(new Error('카카오맵 SDK를 불러오지 못했습니다. 등록 도메인과 키를 확인해 주세요.')) }; document.head.appendChild(script) })
+      sdkPromise = new Promise((resolve, reject) => { const script = document.createElement('script'); script.id = 'kakao-map-sdk'; script.async = true; script.src = `https://dapi.kakao.com/v2/maps/sdk.js?appkey=${key}&libraries=clusterer&autoload=false`; script.onload = () => window.kakao.maps.load(resolve); script.onerror = () => { script.remove(); sdkPromise = null; reject(new Error('카카오맵 SDK를 불러오지 못했습니다. 등록 도메인과 키를 확인해 주세요.')) }; document.head.appendChild(script) })
       return sdkPromise
     }
-    function clearMarkers() { markers.forEach((marker) => marker.setMap(null)); markers = []; infoWindow?.close() }
+    function clearMarkers() { clusterer?.clear(); markers.forEach((marker) => marker.setMap(null)); markers = []; infoWindow?.close() }
     function showInfo(item, marker) {
       selected.value = item; const content = document.createElement('div'); content.className = 'kakao-map-info'
       const label = document.createElement('span'); label.className = 'kakao-map-info__category'; label.textContent = categoryName(item.type)
@@ -139,18 +140,31 @@ const MapView = {
       content.append(label, title, address); infoWindow?.close(); infoWindow = new window.kakao.maps.InfoWindow({ content, removable: true }); infoWindow.open(map, marker)
     }
     function renderMarkers() {
-      if (!map || !window.kakao?.maps) return; clearMarkers(); selected.value = null; const bounds = new window.kakao.maps.LatLngBounds()
-      filtered.value.forEach((item) => { const position = new window.kakao.maps.LatLng(item.lat, item.lng); const marker = new window.kakao.maps.Marker({ map, position, title: item.name }); window.kakao.maps.event.addListener(marker, 'click', () => showInfo(item, marker)); markers.push(marker); bounds.extend(position) })
-      if (markers.length === 1) { map.setCenter(markers[0].getPosition()); map.setLevel(5) } else if (markers.length > 1) map.setBounds(bounds, 60, 60, 60, 60)
+      if (!map || !window.kakao?.maps) return; clearMarkers(); selected.value = null
+      locations.value.forEach((item) => { const position = new window.kakao.maps.LatLng(item.lat, item.lng); const marker = new window.kakao.maps.Marker({ position, title: item.name }); window.kakao.maps.event.addListener(marker, 'click', () => showInfo(item, marker)); markers.push(marker) })
+      if(clusterer)clusterer.addMarkers(markers);else markers.forEach((marker)=>marker.setMap(map))
+      map.setCenter(new window.kakao.maps.LatLng(seoulCenter.lat, seoulCenter.lng)); map.setLevel(6)
+      updateVisibleLocations()
     }
-    function selectLocation(item) { const marker = markers[filtered.value.findIndex((location) => location.id === item.id)]; if (!map || !marker) return; map.panTo(marker.getPosition()); map.setLevel(4); showInfo(item, marker) }
+    function updateVisibleLocations() {
+      if (!map) { visibleLocations.value = []; return }
+      const bounds = map.getBounds(), sw = bounds.getSouthWest(), ne = bounds.getNorthEast()
+      const minLat = sw.getLat(), maxLat = ne.getLat(), minLng = sw.getLng(), maxLng = ne.getLng()
+      visibleLocations.value = locations.value.filter((item) => {
+        const lat = Number(item.lat), lng = Number(item.lng)
+        return lat >= minLat && lat <= maxLat && lng >= minLng && lng <= maxLng
+      })
+    }
+    function resetMapView() { if (!map || !window.kakao?.maps) return; infoWindow?.close(); selected.value = null; map.setCenter(new window.kakao.maps.LatLng(seoulCenter.lat, seoulCenter.lng)); map.setLevel(6); updateVisibleLocations() }
+    function selectCategory(value) { resetMapView(); if (category.value !== value) category.value = value }
+    function selectLocation(item) { const marker = markers[locations.value.findIndex((location) => location.id === item.id)]; if (!map || !marker) return; map.panTo(marker.getPosition()); map.setLevel(4); showInfo(item, marker) }
     function openExternalMap(item) { window.open(`https://map.kakao.com/link/map/${encodeURIComponent(item.name)},${item.lat},${item.lng}`, '_blank', 'noopener,noreferrer') }
-    async function initialize() { loading.value = true; error.value = ''; try { const [items] = await Promise.all([api.getLocations(), loadKakaoSdk()]); locations.value = items; await nextTick(); map = new window.kakao.maps.Map(mapElement.value, { center: new window.kakao.maps.LatLng(37.5665, 126.978), level: 8 }); map.addControl(new window.kakao.maps.MapTypeControl(), window.kakao.maps.ControlPosition.TOPRIGHT); map.addControl(new window.kakao.maps.ZoomControl(), window.kakao.maps.ControlPosition.RIGHT) } catch (err) { error.value = err.message } finally { loading.value = false; await nextTick(); if (map) { map.relayout(); renderMarkers() } } }
-    watch(category, () => nextTick(renderMarkers)); onMounted(initialize); onUnmounted(clearMarkers)
-    return { categories, categoryName, category, loading, error, selected, mapElement, filtered, initialize, selectLocation, openExternalMap }
+    async function initialize() { loading.value = true; error.value = ''; try { const [items] = await Promise.all([api.getMapLocations(category.value), loadKakaoSdk()]); locations.value = items.filter((item)=>Number.isFinite(Number(item.lat))&&Number.isFinite(Number(item.lng))&&Number(item.lat)>=37.40&&Number(item.lat)<=37.75&&Number(item.lng)>=126.75&&Number(item.lng)<=127.25).sort((a,b)=>((Number(a.lat)-seoulCenter.lat)**2+(Number(a.lng)-seoulCenter.lng)**2)-((Number(b.lat)-seoulCenter.lat)**2+(Number(b.lng)-seoulCenter.lng)**2)); visibleLocations.value = []; await nextTick(); if(!map){map = new window.kakao.maps.Map(mapElement.value, { center: new window.kakao.maps.LatLng(seoulCenter.lat, seoulCenter.lng), level: 6 }); map.addControl(new window.kakao.maps.MapTypeControl(), window.kakao.maps.ControlPosition.TOPRIGHT); map.addControl(new window.kakao.maps.ZoomControl(), window.kakao.maps.ControlPosition.RIGHT); window.kakao.maps.event.addListener(map, 'idle', updateVisibleLocations); window.kakao.maps.event.addListener(map, 'dragend', updateVisibleLocations); window.kakao.maps.event.addListener(map, 'zoom_changed', () => window.setTimeout(updateVisibleLocations, 0)); clusterer = new window.kakao.maps.MarkerClusterer({map,averageCenter:true,minLevel:5,minClusterSize:1,gridSize:72,disableClickZoom:false,styles:[{width:'44px',height:'44px',background:'rgba(145,87,61,.92)',border:'3px solid rgba(255,255,255,.9)',borderRadius:'50%',color:'#fff',textAlign:'center',fontSize:'13px',fontWeight:'800',lineHeight:'38px',boxShadow:'0 5px 14px rgba(45,38,27,.25)'}]})} } catch (err) { error.value = err.message } finally { loading.value = false; await nextTick(); if (map) { map.relayout(); renderMarkers(); window.setTimeout(updateVisibleLocations, 0) } } }
+    watch(category, initialize); onMounted(initialize); onUnmounted(clearMarkers)
+    return { categories: placeCategories, categoryName, category, loading, error, selected, mapElement, filtered, initialize, selectCategory, selectLocation, openExternalMap }
   },
   template: `
-    <section class="space-y-6"><div><span class="eyebrow">LOCATION MAP</span><h1 class="page-title">지도</h1><p class="page-description">카테고리별 서울 장소를 지도에서 확인하세요.</p></div><div class="flex flex-wrap gap-2"><button v-for="cat in categories" :key="cat.id" class="filter-pill" :class="{ active: category === cat.id }" @click="category = cat.id">{{ cat.name }}</button></div>
+    <section class="space-y-6"><div><span class="eyebrow">LOCATION MAP</span><h1 class="page-title">지도</h1><p class="page-description">카테고리별 서울 장소를 지도에서 확인하세요.</p></div><div class="flex flex-wrap gap-2"><button v-for="cat in categories" :key="cat.id" class="filter-pill" :class="{ active: category === cat.id }" @click="selectCategory(cat.id)">{{ cat.name }}</button></div>
       <StatusPanel v-if="loading" type="loading" title="카카오맵을 불러오는 중입니다."/><StatusPanel v-else-if="error" type="error" title="카카오맵을 표시할 수 없습니다." :message="error" :retry="initialize"/>
       <div v-show="!loading && !error" class="map-layout"><div ref="mapElement" class="kakao-map-canvas" aria-label="서울 지역정보 지도"></div><aside class="map-list"><button v-for="item in filtered" :key="item.id" :class="{ active: selected?.id === item.id }" @click="selectLocation(item)"><span class="tag">{{ categoryName(item.type) }}</span><strong>{{ item.name }}</strong><small>{{ item.address }}</small><span class="map-list__external" @click.stop="openExternalMap(item)">카카오맵으로 열기 <i class="fa-solid fa-arrow-up-right-from-square"></i></span></button></aside></div>
     </section>`,

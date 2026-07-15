@@ -37,17 +37,18 @@ window.LOCALHUB_CONFIG = {
 - 실제 백엔드: `API_BASE_URL` 입력 후 `USE_MOCK_API: false`
 - 카카오 개발자 콘솔의 JavaScript SDK 도메인에 `http://localhost:5500` 등록
 
-## 백엔드 API 계약
+## 현재 팀 백엔드 연결
 
-- `GET /api/locations`
-- `GET /api/posts?search=&category=&page=&size=`
-- `GET`, `PUT`, `DELETE /api/posts/:id`
-- `POST /api/posts`
-- `POST /api/posts/:id/comments`
-- `DELETE /api/posts/:id/comments/:commentId`
-- `POST /api/chat`
+- 백엔드 기본 주소: `http://localhost:8000`
+- 지역정보: `GET /api/places?category=&keyword=&page=`
+- 지도: `GET /api/places/map?category=`
+- 최근 글: `GET /api/community/recent`
+- 게시글 목록·작성: `GET`, `POST /api/community`
+- 게시글 상세·수정·삭제: `GET`, `PUT`, `DELETE /api/community/:id`
 
-게시판 검색은 제목과 내용에만 적용됩니다. CDN과 카카오맵 사용에는 인터넷 연결이 필요합니다.
+프론트의 장소·게시글 필드명은 `assets/js/api.js`에서 현재 FastAPI 응답 형식으로 변환됩니다. 댓글과 챗봇은 백엔드 API가 추가되기 전까지 실제 모드에서 안내 오류를 표시합니다. 현재 게시판 검색은 백엔드 구현에 따라 제목만 검색합니다. CDN과 카카오맵 사용에는 인터넷 연결이 필요합니다.
+
+`assets/js/config.local.js`의 `KAKAO_MAP_KEY`에는 카카오 JavaScript 키를 입력해야 지도가 표시됩니다. 이 파일은 Git에 포함되지 않습니다.
 
 ## 파일 구조
 
