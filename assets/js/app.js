@@ -1,5 +1,5 @@
 const { createApp, ref, reactive, computed, onMounted, onUnmounted, nextTick, watch } = Vue
-const { createRouter, createWebHashHistory, useRoute, useRouter } = VueRouter
+const { createRouter, createWebHistory, useRoute, useRouter } = VueRouter
 
 const api = window.LocalHubAPI
 const categories = window.LocalHubData.categories
@@ -59,22 +59,24 @@ const PasswordModal = {
 
 const ChatWidget = {
   setup() {
-    const open = ref(false), input = ref(''), loading = ref(false), error = ref(''), list = ref(null)
-    const messages = ref([{ role: 'assistant', text: '안녕하세요! LocalHub 지역정보 안내입니다. GPT API는 백엔드 연결 후 활성화됩니다.' }])
+    const configuredKey=String(window.LOCALHUB_CONFIG?.OPENAI_API_KEY||sessionStorage.getItem('localhub_openai_session_key')||'').trim()
+    const open = ref(false), input = ref(''), loading = ref(false), error = ref(''), list = ref(null), apiKey = ref(configuredKey)
+    const messages = ref([{ role: 'assistant', text: '안녕하세요! LocalHub 서울 지역정보 안내입니다. 서울 DB를 바탕으로 관광지와 이번 주 축제 정보를 안내해 드릴게요.' }])
     async function send() {
       const text = input.value.trim(); if (!text || loading.value) return
+      if(!apiKey.value){error.value='OpenAI 자동 연결 설정을 불러오지 못했습니다. config.local.js를 확인해 주세요.';return}
       messages.value.push({ role: 'user', text }); input.value = ''; loading.value = true; error.value = ''
-      try { const response = await api.chat(text, messages.value.slice(0, -1)); messages.value.push({ role: 'assistant', text: response.message || response.answer || response.content }) }
+      try { const response = await api.chat(text, messages.value.slice(0, -1), apiKey.value); messages.value.push({ role: 'assistant', text: response.message || response.answer || response.content, sources: response.sources || [] }) }
       catch (err) { error.value = err.message }
       finally { loading.value = false; await nextTick(); if (list.value) list.value.scrollTop = list.value.scrollHeight }
     }
-    return { open, input, loading, error, list, messages, send }
+    return { open, input, loading, error, list, messages, apiKey, send }
   },
   template: `
     <button class="chat-fab" aria-label="지역정보 챗봇 열기" @click="open = !open"><i :class="open ? 'fa-solid fa-xmark' : 'fa-solid fa-comment-dots'"></i></button>
-    <section v-if="open" class="chat-panel" aria-label="LocalHub 챗봇"><header><div><strong>LocalHub Guide</strong><p>GPT API 연결 준비 완료</p></div><button @click="open = false"><i class="fa-solid fa-xmark"></i></button></header>
-      <div ref="list" class="chat-messages"><div v-for="(message, index) in messages" :key="index" class="chat-message" :class="'chat-message--' + message.role">{{ message.text }}</div><div v-if="loading" class="chat-message chat-message--assistant"><i class="fa-solid fa-ellipsis fa-beat-fade"></i></div><p v-if="error" class="text-xs text-red-600 text-center">{{ error }}</p></div>
-      <form class="chat-input" @submit.prevent="send"><input v-model="input" placeholder="서울 지역정보를 물어보세요"><button :disabled="loading"><i class="fa-solid fa-paper-plane"></i></button></form>
+    <section v-if="open" class="chat-panel" aria-label="LocalHub 챗봇"><header><div><strong>LocalHub Guide</strong><p>gpt-5-mini · 서울 DB 안내</p></div><button @click="open = false"><i class="fa-solid fa-xmark"></i></button></header>
+      <div ref="list" class="chat-messages"><div v-for="(message, index) in messages" :key="index" class="chat-message" :class="'chat-message--' + message.role"><span class="chat-message-text">{{ message.text }}</span><small v-if="message.sources?.length" class="chat-rag-source"><i class="fa-solid fa-database"></i> 서울 DB {{ message.sources.length }}건 참조</small></div><div v-if="loading" class="chat-message chat-message--assistant"><i class="fa-solid fa-ellipsis fa-beat-fade"></i><small class="chat-rag-loading">서울 DB에서 관련 정보를 찾는 중…</small></div><p v-if="error" class="text-xs text-red-600 text-center">{{ error }}</p></div>
+      <form class="chat-input" @submit.prevent="send"><input v-model="input" :disabled="loading" placeholder="서울 지역정보를 물어보세요"><button :disabled="loading"><i class="fa-solid fa-paper-plane"></i></button></form>
     </section>`,
 }
 
@@ -138,7 +140,7 @@ const LocalInfoView = {
       <StatusPanel v-if="loading" type="loading" title="지역정보를 불러오는 중입니다."/><StatusPanel v-else-if="error" type="error" title="지역정보를 불러오지 못했습니다." :message="error" :retry="load"/><StatusPanel v-else-if="!locations.length" title="검색 결과가 없습니다." message="다른 검색어나 카테고리를 선택해 보세요."/>
       <div v-else class="grid sm:grid-cols-2 lg:grid-cols-4 gap-5"><article v-for="item in locations" :key="item.id" class="location-card" @click="selected = item"><img :src="item.image" :alt="item.name"><div><span class="tag">{{ categoryName(item.type) }}</span><h2>{{ item.name }}</h2><p><i class="fa-solid fa-location-dot"></i> {{ item.address }}</p></div></article></div>
       <PaginationBar v-if="locations.length" :page="page" :total-pages="totalPages" @change="changePage"/>
-      <div v-if="selected" class="modal-backdrop" @click.self="selected = null"><article class="modal-card"><button class="modal-close" @click="selected = null"><i class="fa-solid fa-xmark"></i></button><img :src="selected.image" :alt="selected.name"><span class="tag">{{ categoryName(selected.type) }}</span><h2 class="section-title mt-3">{{ selected.name }}</h2><p class="text-sm text-beige-800 mt-3">{{ selected.desc }}</p><dl class="info-list"><div><dt>주소</dt><dd>{{ selected.address }}</dd></div></dl><button class="btn-primary w-full mt-5" @click="openMap(selected)">카카오맵에서 보기</button></article></div>
+      <div v-if="selected" class="modal-backdrop" @click.self="selected = null"><article class="modal-card"><button class="modal-close" @click="selected = null"><i class="fa-solid fa-xmark"></i></button><img :src="selected.image" :alt="selected.name" style="display:block;width:calc(100% + 3rem) !important;max-width:none !important;height:15rem !important;margin:-1.5rem -1.5rem 1.25rem !important;padding:0;background:#f5eee2;object-fit:cover !important;object-position:center"><span class="tag">{{ categoryName(selected.type) }}</span><h2 class="section-title mt-3">{{ selected.name }}</h2><p class="text-sm text-beige-800 mt-3">{{ selected.desc }}</p><dl class="info-list"><div><dt>주소</dt><dd>{{ selected.address }}</dd></div></dl><button class="btn-primary w-full mt-5" @click="openMap(selected)">카카오맵에서 보기</button></article></div>
     </section>`,
 }
 
@@ -221,14 +223,14 @@ const BoardListView = {
 const BoardFormView = {
   components: { StatusPanel }, props: ['id'],
   setup(props) {
-    const router = useRouter(), editing = Boolean(props.id), loading = ref(editing), saving = ref(false), error = ref(''), fieldError = ref('')
+    const router = useRouter(), editing = Boolean(props.id), loading = ref(editing), saving = ref(false), error = ref(''), fieldError = ref(''), originalCategory = ref('')
     const form = reactive({ category: categories[0].name, author: '', title: '', content: '', password: '' })
-    async function load() { try { const password = form.password; Object.assign(form, await api.getPost(props.id)); form.password = password } catch (err) { error.value = err.message } finally { loading.value = false } }
-    async function submit() { fieldError.value = ''; error.value = ''; if (![form.author, form.title, form.content, form.password].every((value) => value.trim())) { fieldError.value = '모든 항목을 입력해 주세요.'; return } saving.value = true; try { const post = editing ? await api.updatePost(props.id, form) : await api.createPost(form); router.push('/board/' + post.id) } catch (err) { error.value = err.message } finally { saving.value = false } }
+    async function load() { try { const password = form.password; Object.assign(form, await api.getPost(props.id)); originalCategory.value = form.category; form.password = password } catch (err) { error.value = err.message } finally { loading.value = false } }
+    async function submit() { fieldError.value = ''; error.value = ''; if (editing) form.category = originalCategory.value; if (![form.author, form.title, form.content, form.password].every((value) => value.trim())) { fieldError.value = '모든 항목을 입력해 주세요.'; return } saving.value = true; try { const post = editing ? await api.updatePost(props.id, form) : await api.createPost(form); router.push('/board/' + post.id) } catch (err) { error.value = err.message } finally { saving.value = false } }
     onMounted(() => { if (editing) { form.password = sessionStorage.getItem(`localhub_edit_password_${props.id}`) || ''; sessionStorage.removeItem(`localhub_edit_password_${props.id}`); load() } })
     return { router, editing, loading, saving, error, fieldError, form, categories, submit }
   },
-  template: `<StatusPanel v-if="loading" type="loading" title="게시글을 불러오는 중입니다."/><StatusPanel v-else-if="error && !form.title" type="error" title="게시글을 불러오지 못했습니다." :message="error"/><section v-else class="premium-card p-6 md:p-8 rounded-2xl space-y-6"><div><span class="eyebrow">COMMUNITY</span><h1 class="page-title">{{ editing ? '게시글 수정' : '게시글 작성' }}</h1></div><form class="space-y-5" @submit.prevent="submit"><div class="grid sm:grid-cols-2 gap-4"><label class="form-field"><span>카테고리</span><select v-model="form.category" class="form-input"><option v-for="cat in categories" :key="cat.id">{{ cat.name }}</option></select></label><label class="form-field"><span>익명 작성자</span><input v-model="form.author" class="form-input" maxlength="30" placeholder="닉네임"></label></div><label class="form-field"><span>제목</span><input v-model="form.title" class="form-input" maxlength="100" placeholder="제목을 입력해 주세요"></label><label class="form-field"><span>내용</span><textarea v-model="form.content" class="form-input min-h-52 resize-y" maxlength="5000" placeholder="지역정보와 경험을 적어 주세요."></textarea></label><label class="form-field max-w-sm"><span>수정용 비밀번호</span><input v-model="form.password" type="password" class="form-input" maxlength="12" placeholder="비밀번호"><small>수정과 삭제에 사용됩니다.</small></label><p v-if="fieldError || error" class="form-error">{{ fieldError || error }}</p><div class="flex gap-3"><button class="btn-primary" :disabled="saving">{{ saving ? '저장 중…' : (editing ? '수정 완료' : '등록') }}</button><button type="button" class="btn-secondary" @click="router.back()">취소</button></div></form></section>`,
+  template: `<StatusPanel v-if="loading" type="loading" title="게시글을 불러오는 중입니다."/><StatusPanel v-else-if="error && !form.title" type="error" title="게시글을 불러오지 못했습니다." :message="error"/><section v-else class="premium-card p-6 md:p-8 rounded-2xl space-y-6"><div><span class="eyebrow">COMMUNITY</span><h1 class="page-title">{{ editing ? '게시글 수정' : '게시글 작성' }}</h1></div><form class="space-y-5" @submit.prevent="submit"><div class="grid sm:grid-cols-2 gap-4"><label class="form-field"><span>카테고리</span><select v-model="form.category" :disabled="editing" class="form-input disabled:cursor-not-allowed disabled:bg-beige-100 disabled:opacity-70" :title="editing ? '게시글 수정 시 카테고리는 변경할 수 없습니다.' : ''"><option v-for="cat in categories" :key="cat.id">{{ cat.name }}</option></select><small v-if="editing">게시글 수정 시 카테고리는 변경할 수 없습니다.</small></label><label class="form-field"><span>익명 작성자</span><input v-model="form.author" class="form-input" maxlength="30" placeholder="닉네임"></label></div><label class="form-field"><span>제목</span><input v-model="form.title" class="form-input" maxlength="100" placeholder="제목을 입력해 주세요"></label><label class="form-field"><span>내용</span><textarea v-model="form.content" class="form-input min-h-52 resize-y" maxlength="5000" placeholder="지역정보와 경험을 적어 주세요."></textarea></label><label class="form-field max-w-sm"><span>수정용 비밀번호</span><input v-model="form.password" type="password" class="form-input" maxlength="12" placeholder="비밀번호"><small>수정과 삭제에 사용됩니다.</small></label><p v-if="fieldError || error" class="form-error">{{ fieldError || error }}</p><div class="flex gap-3"><button class="btn-primary" :disabled="saving">{{ saving ? '저장 중…' : (editing ? '수정 완료' : '등록') }}</button><button type="button" class="btn-secondary" @click="router.back()">취소</button></div></form></section>`,
 }
 
 const BoardDetailView = {
@@ -254,7 +256,7 @@ const routes = [
   { path: '/board/:id/edit', component: BoardFormView, props: true }, { path: '/board/:id', component: BoardDetailView, props: true },
   { path: '/:pathMatch(.*)*', component: NotFoundView },
 ]
-const router = createRouter({ history: createWebHashHistory(), routes, scrollBehavior: () => ({ top: 0 }) })
+const router = createRouter({ history: createWebHistory(), routes, scrollBehavior: () => ({ top: 0 }) })
 const App = { components: { AppHeader, ChatWidget }, template: `<div class="relative min-h-screen flex flex-col"><AppHeader/><main class="flex-grow max-w-6xl w-full mx-auto px-4 sm:px-6 py-8 md:py-10"><RouterView/></main><footer class="border-t border-beige-300/60 py-6 text-center text-xs text-beige-800/60">LocalHub · 공공데이터 기반 지역정보 커뮤니티</footer><ChatWidget/></div>` }
 
 createApp(App).use(router).mount('#app')

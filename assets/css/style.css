@@ -270,6 +270,16 @@ section.space-y-12:has(> .home-intro)>.home-intro{order:3}
 .festival-schedule-item time{grid-column:2;grid-row:1;width:14.5rem;height:3.25rem!important;min-height:3.25rem!important;padding:.4rem .65rem;gap:0}
 .festival-schedule-item time small{display:none}
 .festival-schedule-item time strong{color:#8a7c72!important;font-size:.76rem!important;font-weight:400!important;white-space:nowrap}
+.festival-schedule-item time{border:0!important;border-radius:0!important;background:transparent!important;box-shadow:none!important}
 .festival-schedule-item>i{grid-column:3;grid-row:1}
 .festival-schedule-item p{width:auto;max-width:100%;padding:0;border:0;background:transparent}
 @media(max-width:700px){.festival-schedule-item{grid-template-columns:minmax(0,1fr) auto!important}.festival-schedule-item>div{grid-column:1;grid-row:1}.festival-schedule-item>i{grid-column:2;grid-row:1}.festival-schedule-item time{grid-column:1/3;grid-row:2;width:100%;height:2.45rem!important;min-height:2.45rem!important;flex-direction:row!important;gap:.45rem}}
+
+.chat-input input:disabled{background:#f5f1eb;color:#aaa}
+.chat-input button:disabled{cursor:not-allowed;opacity:.45}
+/* Hide the retired manual API-key controls even if an older chat template is cached. */
+.chat-key-setup,.chat-key-status{display:none!important}
+.chat-message-text{display:block;white-space:pre-wrap}
+.chat-rag-source{display:block;margin-top:.55rem;padding-top:.45rem;border-top:1px solid #eee2d4;color:#9a6a51;font-size:.58rem;font-weight:700}
+.chat-rag-source i{margin-right:.25rem}
+.chat-rag-loading{display:block;margin-top:.35rem;color:#9a806d;font-size:.58rem}
