@@ -30,12 +30,19 @@
     lng: item.mapx,
     image: item.firstimage || item.firstimage2 || fallbackImage,
     desc: item.tel || '한국관광공사 TourAPI 제공 장소 정보',
+    startDate: item.eventstartdate || item.event_start_date || item.start_date || '',
+    endDate: item.eventenddate || item.event_end_date || item.end_date || '',
+  })
+  const normalizeComment = (item) => ({
+    ...item,
+    author: item.author || item.nickname || '익명',
+    date: (item.date || item.created_at || '').slice(0, 10),
   })
   const normalizePost = (item) => ({
     ...item,
     author: item.author || item.nickname || '익명',
     date: (item.date || item.created_at || '').slice(0, 10),
-    comments: item.comments || [],
+    comments: (item.comments || []).map(normalizeComment),
   })
   const normalizePosts = (data) => {
     const value = Array.isArray(data)
@@ -45,6 +52,48 @@
   }
 
   window.LocalHubAPI = {
+    async getThisWeekFestivals(){
+      if(useMock)return {week_start:'',week_end:'',total:0,items:[]}
+      const data=await request('/api/places/festivals/this-week')
+      return {
+        week_start:data.week_start||'',
+        week_end:data.week_end||'',
+        total:data.total||0,
+        items:(data.items||[]).map((item)=>({
+          ...item,
+          addr1:item.addr||item.addr1||'',
+          addr2:item.addr2||'',
+        })),
+      }
+    },
+    async getSeoulWeather(){
+      const apiKey=config.OPENWEATHER_API_KEY
+      if(!apiKey)throw new Error('OpenWeather API 키가 설정되지 않았습니다.')
+      const query=new URLSearchParams({
+        lat:'37.5665',
+        lon:'126.9780',
+        appid:apiKey,
+        units:'metric',
+        lang:'kr',
+      })
+      const response=await fetch(`https://api.openweathermap.org/data/2.5/weather?${query}`)
+      const data=await response.json().catch(()=>null)
+      if(!response.ok){
+        if(response.status===401)throw new Error('날씨 API 키가 아직 활성화되지 않았거나 올바르지 않습니다.')
+        throw new Error(data?.message||'서울 날씨를 불러오지 못했습니다.')
+      }
+      return {
+        location:'서울특별시',
+        temperature:Math.round(Number(data.main?.temp||0)*10)/10,
+        feelsLike:Math.round(Number(data.main?.feels_like||0)*10)/10,
+        humidity:Number(data.main?.humidity||0),
+        windSpeed:Math.round(Number(data.wind?.speed||0)*10)/10,
+        rainAmount:Number(data.rain?.['1h']||data.snow?.['1h']||0),
+        description:data.weather?.[0]?.description||'날씨 정보 없음',
+        icon:data.weather?.[0]?.icon||'01d',
+        observedAt:data.dt ? new Date(data.dt*1000) : new Date(),
+      }
+    },
     async getLocations({category='all',search='',page=1}={}){
       if(!useMock){
         const q=new URLSearchParams({page})
@@ -78,8 +127,50 @@
     async createPost(payload){ if(!useMock)return normalizePost(await request('/api/community',{method:'POST',body:JSON.stringify({...payload,nickname:payload.author})}));const posts=read();const post={...payload,id:Math.max(0,...posts.map(p=>p.id))+1,date:new Date().toISOString().slice(0,10),comments:[]};posts.unshift(post);write(posts);return wait(post) },
     async updatePost(id,payload){ if(!useMock)return normalizePost(await request('/api/community/'+id,{method:'PUT',body:JSON.stringify({title:payload.title,content:payload.content,password:payload.password})}));const posts=read(),i=posts.findIndex(p=>String(p.id)===String(id));if(i<0)throw new Error('게시글을 찾을 수 없습니다.');if(posts[i].password!==payload.password)throw new Error('비밀번호가 일치하지 않습니다.');posts[i]={...posts[i],...payload,id:posts[i].id};write(posts);return wait(posts[i]) },
     async deletePost(id,password){ if(!useMock)return request('/api/community/'+id,{method:'DELETE',body:JSON.stringify({password})});const posts=read(),post=posts.find(p=>String(p.id)===String(id));if(post?.password!==password)throw new Error('비밀번호가 일치하지 않습니다.');write(posts.filter(p=>String(p.id)!==String(id)));return wait(null) },
-    async createComment(postId,payload){ if(!useMock)throw new Error('현재 백엔드에는 댓글 API가 아직 없습니다.');const posts=read(),post=posts.find(p=>String(p.id)===String(postId));const item={...payload,id:Math.max(0,...(post.comments||[]).map(c=>c.id))+1,date:new Date().toISOString().slice(0,10)};post.comments=[...(post.comments||[]),item];write(posts);return wait(item) },
-    async deleteComment(postId,commentId,password){ if(!useMock)throw new Error('현재 백엔드에는 댓글 API가 아직 없습니다.');const posts=read(),post=posts.find(p=>String(p.id)===String(postId)),item=post?.comments?.find(c=>String(c.id)===String(commentId));if(item?.password!==password)throw new Error('비밀번호가 일치하지 않습니다.');post.comments=post.comments.filter(c=>String(c.id)!==String(commentId));write(posts);return wait(null) },
+    async getComments(postId){
+      if(!useMock){
+        const data=await request(`/api/community/${postId}/comments`)
+        return {total:data.total||0,items:(data.items||[]).map(normalizeComment)}
+      }
+      const post=read().find(p=>String(p.id)===String(postId))
+      if(!post)throw new Error('게시글을 찾을 수 없습니다.')
+      return wait({total:(post.comments||[]).length,items:(post.comments||[]).map(normalizeComment)})
+    },
+    async createComment(postId,payload){
+      if(!useMock){
+        const item=await request(`/api/community/${postId}/comments`,{
+          method:'POST',
+          body:JSON.stringify({nickname:payload.author,content:payload.content,password:payload.password}),
+        })
+        return normalizeComment(item)
+      }
+      const posts=read(),post=posts.find(p=>String(p.id)===String(postId))
+      if(!post)throw new Error('게시글을 찾을 수 없습니다.')
+      const item={...payload,id:Math.max(0,...(post.comments||[]).map(c=>c.id))+1,date:new Date().toISOString().slice(0,10)}
+      post.comments=[...(post.comments||[]),item];write(posts);return wait(normalizeComment(item))
+    },
+    async updateComment(commentId,payload){
+      if(!useMock){
+        return normalizeComment(await request(`/api/community/comments/${commentId}`,{
+          method:'PUT',
+          body:JSON.stringify({content:payload.content,password:payload.password}),
+        }))
+      }
+      const posts=read();let found=null
+      for(const post of posts){
+        const item=(post.comments||[]).find(c=>String(c.id)===String(commentId))
+        if(item){if(item.password!==payload.password)throw new Error('비밀번호가 일치하지 않습니다.');item.content=payload.content;found=item;break}
+      }
+      if(!found)throw new Error('댓글을 찾을 수 없습니다.')
+      write(posts);return wait(normalizeComment(found))
+    },
+    async deleteComment(postId,commentId,password){
+      if(!useMock)return request(`/api/community/comments/${commentId}`,{method:'DELETE',body:JSON.stringify({password})})
+      const posts=read(),post=posts.find(p=>String(p.id)===String(postId)),item=post?.comments?.find(c=>String(c.id)===String(commentId))
+      if(!item)throw new Error('댓글을 찾을 수 없습니다.')
+      if(item.password!==password)throw new Error('비밀번호가 일치하지 않습니다.')
+      post.comments=post.comments.filter(c=>String(c.id)!==String(commentId));write(posts);return wait(null)
+    },
     async chat(message,history=[]){ if(!useMock)throw new Error('현재 백엔드에는 챗봇 API가 아직 없습니다.');await wait(null);return {message:`"${message}"에 대한 GPT 응답은 백엔드 연결 후 제공됩니다.`} },
   }
 })()
