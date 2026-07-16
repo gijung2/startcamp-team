@@ -60,18 +60,16 @@ const PasswordModal = {
 
 const ChatWidget = {
   setup() {
-    const configuredKey=String(window.LOCALHUB_CONFIG?.OPENAI_API_KEY||sessionStorage.getItem('localhub_openai_session_key')||'').trim()
-    const open = ref(false), input = ref(''), loading = ref(false), error = ref(''), list = ref(null), apiKey = ref(configuredKey)
+    const open = ref(false), input = ref(''), loading = ref(false), error = ref(''), list = ref(null)
     const messages = ref([{ role: 'assistant', text: '안녕하세요! Seoul Mate 서울 지역정보 안내입니다. 서울 DB를 바탕으로 관광지와 이번 주 축제 정보를 안내해 드릴게요.' }])
     async function send() {
       const text = input.value.trim(); if (!text || loading.value) return
-      if(!apiKey.value){error.value='OpenAI 자동 연결 설정을 불러오지 못했습니다. config.local.js를 확인해 주세요.';return}
       messages.value.push({ role: 'user', text }); input.value = ''; loading.value = true; error.value = ''
-      try { const response = await api.chat(text, messages.value.slice(0, -1), apiKey.value); messages.value.push({ role: 'assistant', text: response.message || response.answer || response.content, sources: response.sources || [] }) }
+      try { const response = await api.chat(text, messages.value.slice(0, -1)); messages.value.push({ role: 'assistant', text: response.message || response.answer || response.content, sources: response.sources || [] }) }
       catch (err) { error.value = err.message }
       finally { loading.value = false; await nextTick(); if (list.value) list.value.scrollTop = list.value.scrollHeight }
     }
-    return { open, input, loading, error, list, messages, apiKey, send }
+    return { open, input, loading, error, list, messages, send }
   },
   template: `
     <button class="chat-fab" aria-label="지역정보 챗봇 열기" @click="open = !open"><i :class="open ? 'fa-solid fa-xmark' : 'fa-solid fa-comment-dots'"></i></button>
@@ -151,11 +149,13 @@ const MapView = {
     const filtered = computed(() => visibleLocations.value)
     const seoulCenter = { lat: 37.5547, lng: 126.9707 }
     let map = null, clusterer = null, markers = [], infoWindow = null, sdkPromise = null
-    function loadKakaoSdk() {
+    async function loadKakaoSdk() {
       if (window.kakao?.maps) return new Promise((resolve) => window.kakao.maps.load(resolve))
       if (sdkPromise) return sdkPromise
-      const key = window.LOCALHUB_CONFIG?.KAKAO_MAP_KEY
-      if (!key) return Promise.reject(new Error('카카오맵 JavaScript 키가 설정되지 않았습니다.'))
+      const response = await fetch('/.netlify/functions/public-config')
+      const data = await response.json().catch(() => null)
+      if (!response.ok || !data?.kakaoMapKey) throw new Error(data?.detail || '카카오맵 JavaScript 키를 불러오지 못했습니다.')
+      const key = data.kakaoMapKey
       sdkPromise = new Promise((resolve, reject) => { const script = document.createElement('script'); script.id = 'kakao-map-sdk'; script.async = true; script.src = `https://dapi.kakao.com/v2/maps/sdk.js?appkey=${key}&libraries=clusterer&autoload=false`; script.onload = () => window.kakao.maps.load(resolve); script.onerror = () => { script.remove(); sdkPromise = null; reject(new Error('카카오맵 SDK를 불러오지 못했습니다. 등록 도메인과 키를 확인해 주세요.')) }; document.head.appendChild(script) })
       return sdkPromise
     }
