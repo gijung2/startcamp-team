@@ -19,7 +19,7 @@ const AppHeader = {
     <header class="w-full z-40 sticky top-0 bg-[#FAF7F0]/95 backdrop-blur-md border-b border-[#EFE6D5] shadow-sm">
       <div class="max-w-6xl mx-auto px-4 sm:px-6 min-h-[76px] flex items-center justify-between gap-4">
         <RouterLink to="/" class="flex items-center gap-3.5 shrink-0">
-          <span class="flex items-center gap-2 text-xl font-bold tracking-tight text-beige-900"><i class="fa-solid fa-location-pin text-accent-terracotta"></i> LocalHub</span>
+          <span class="flex items-center gap-2.5 text-[1.7rem] font-bold tracking-tight text-beige-900"><span class="flex w-9 h-9 shrink-0 items-center justify-center overflow-hidden rounded-full" aria-hidden="true"><img src="./assets/images/seoul-logo.png" alt="" class="w-full h-full scale-[1.6] object-cover"></span> SeoulMate</span>
           <span class="hidden sm:inline-flex bg-beige-200/80 px-3 py-1 rounded-full border border-beige-300 text-xs text-beige-800 font-medium">Seoul</span>
         </RouterLink>
         <nav class="top-nav" aria-label="주요 메뉴">
@@ -61,7 +61,7 @@ const ChatWidget = {
   setup() {
     const configuredKey=String(window.LOCALHUB_CONFIG?.OPENAI_API_KEY||sessionStorage.getItem('localhub_openai_session_key')||'').trim()
     const open = ref(false), input = ref(''), loading = ref(false), error = ref(''), list = ref(null), apiKey = ref(configuredKey)
-    const messages = ref([{ role: 'assistant', text: '안녕하세요! LocalHub 서울 지역정보 안내입니다. 서울 DB를 바탕으로 관광지와 이번 주 축제 정보를 안내해 드릴게요.' }])
+    const messages = ref([{ role: 'assistant', text: '안녕하세요! Seoul Mate 서울 지역정보 안내입니다. 서울 DB를 바탕으로 관광지와 이번 주 축제 정보를 안내해 드릴게요.' }])
     async function send() {
       const text = input.value.trim(); if (!text || loading.value) return
       if(!apiKey.value){error.value='OpenAI 자동 연결 설정을 불러오지 못했습니다. config.local.js를 확인해 주세요.';return}
