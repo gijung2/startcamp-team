@@ -22,11 +22,11 @@ body {
         }
 
         .category-btn {
-            background: #ffffff;
-            border: 1px solid rgba(234, 221, 203, 0.6);
+            background: rgba(255, 255, 255, 0.94);
+            border: 1px solid rgba(224, 207, 185, 0.95);
             color: #5c5243;
             transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
-            box-shadow: 0 2px 8px -1px rgba(92, 82, 67, 0.04);
+            box-shadow: 0 6px 16px rgba(92, 82, 67, 0.07);
         }
 
         .category-btn:hover, .category-btn.active {
@@ -238,7 +238,7 @@ body {
 @media(max-width:700px){.festival-schedule-card{padding:1rem!important}.festival-schedule-header{align-items:flex-start;flex-direction:column}.festival-schedule-item{grid-template-columns:3.7rem minmax(0,1fr) auto;padding:.7rem}.festival-schedule-item time{height:3.4rem}}
 
 /* Home layout: live cards first, intro second */
-section.space-y-12:has(> .home-intro){display:flex;flex-direction:column;gap:3rem}
+section.space-y-12:has(> .home-intro){display:flex;flex-direction:column;gap:2rem}
 section.space-y-12:has(> .home-intro)>*{order:4;margin-top:0!important}
 section.space-y-12:has(> .home-intro)>.home-empty-grid{order:1}
 section.space-y-12:has(> .home-intro)>.home-live-divider{order:2}
@@ -248,7 +248,7 @@ section.space-y-12:has(> .home-intro)>.home-intro{order:3}
 .home-empty-grid{grid-template-columns:minmax(18rem,.72fr) minmax(0,1.28fr)!important}
 .weather-card{order:1}
 .festival-schedule-card{order:2}
-@media(max-width:900px){section.space-y-12:has(> .home-intro){gap:2rem}.home-empty-grid{grid-template-columns:1fr!important}.weather-card{order:1}.festival-schedule-card{order:2}}
+@media(max-width:900px){section.space-y-12:has(> .home-intro){gap:1.25rem}.home-empty-grid{grid-template-columns:1fr!important}.weather-card{order:1}.festival-schedule-card{order:2}}
 
 /* This week's festival title and scrollable schedule */
 .festival-schedule-header h2{gap:0!important;font-size:0!important}
